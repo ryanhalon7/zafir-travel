@@ -1,13 +1,6 @@
 "use server";
 
-import {
-  EventCategory,
-  DocumentCategory,
-  ExpenseCategory,
-  PackingCategory,
-  TripMemberRole,
-  TripStatus,
-} from "@prisma/client";
+import type { DocumentCategory } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -15,6 +8,39 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
+
+// Keep request validation independent from Prisma's generated runtime exports.
+// During schema changes, Next's dev server can retain an older @prisma/client
+// module whose newly-added enums are undefined until the process is restarted.
+const tripStatuses = ["PLANNING", "UPCOMING", "ACTIVE", "PAST"] as const;
+const eventCategories = ["FLIGHT", "LODGING", "ACTIVITY", "FOOD", "TRANSPORT"] as const;
+const expenseCategories = [
+  "FLIGHT",
+  "LODGING",
+  "FOOD",
+  "ACTIVITY",
+  "TRANSPORT",
+  "SHOPPING",
+  "OTHER",
+] as const;
+const packingCategories = [
+  "CLOTHING",
+  "TOILETRIES",
+  "DOCUMENTS",
+  "ELECTRONICS",
+  "MEDICATION",
+  "GEAR",
+  "MISCELLANEOUS",
+] as const;
+const documentCategories = [
+  "FLIGHT",
+  "LODGING",
+  "IDENTIFICATION",
+  "INSURANCE",
+  "RESERVATION",
+  "TRANSPORT",
+  "OTHER",
+] as const;
 
 const authSchema = z.object({
   email: z.string().email(),
@@ -30,7 +56,7 @@ const tripSpaceSchema = z.object({
   destinations: z.string().trim().optional(),
   startDate: z.string().min(1),
   endDate: z.string().min(1),
-  status: z.nativeEnum(TripStatus).default(TripStatus.PLANNING),
+  status: z.enum(tripStatuses).default("PLANNING"),
 });
 
 const inviteSchema = z.object({
@@ -54,7 +80,7 @@ const eventSchema = z.object({
   tripId: z.string().min(1),
   dayId: z.string().min(1),
   title: z.string().trim().min(2).max(120),
-  category: z.nativeEnum(EventCategory),
+  category: z.enum(eventCategories),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   locationName: z.string().trim().max(160).optional(),
@@ -99,7 +125,7 @@ const expenseSchema = z.object({
   payerId: z.string().uuid(),
   title: z.string().trim().min(2).max(120),
   amount: z.coerce.number().positive().max(9999999999),
-  category: z.nativeEnum(ExpenseCategory),
+  category: z.enum(expenseCategories),
   expenseDate: z.string().min(1),
   notes: z.string().trim().max(500).optional(),
 });
@@ -117,7 +143,7 @@ const packingItemSchema = z.object({
   tripId: z.string().min(1),
   name: z.string().trim().min(1).max(120),
   quantity: z.coerce.number().int().min(1).max(99),
-  category: z.nativeEnum(PackingCategory),
+  category: z.enum(packingCategories),
   assignedToId: z.union([z.string().uuid(), z.literal("")]),
   notes: z.string().trim().max(300).optional(),
 });
@@ -133,7 +159,7 @@ const packingItemIdSchema = z.object({
 
 const documentUploadSchema = z.object({
   tripId: z.string().min(1),
-  category: z.nativeEnum(DocumentCategory),
+  category: z.enum(documentCategories),
   description: z.string().trim().max(300).optional(),
 });
 
@@ -379,7 +405,7 @@ export async function createTripSpaceAction(formData: FormData) {
     destinations: formData.get("destinations"),
     startDate: formData.get("startDate"),
     endDate: formData.get("endDate"),
-    status: formData.get("status") || TripStatus.PLANNING,
+    status: formData.get("status") || "PLANNING",
   });
 
   if (!parsed.success) {
@@ -407,7 +433,7 @@ export async function createTripSpaceAction(formData: FormData) {
       members: {
         create: {
           userId: user.id,
-          role: TripMemberRole.OWNER,
+          role: "OWNER",
         },
       },
     },
@@ -465,7 +491,7 @@ export async function joinTripSpaceAction(formData: FormData) {
       data: {
         tripId: trip.id,
         userId: user.id,
-        role: TripMemberRole.PARTNER,
+        role: "PARTNER",
       },
     });
   }
@@ -482,7 +508,7 @@ export async function updateTripAction(formData: FormData) {
     destinations: formData.get("destinations"),
     startDate: formData.get("startDate"),
     endDate: formData.get("endDate"),
-    status: formData.get("status") || TripStatus.PLANNING,
+    status: formData.get("status") || "PLANNING",
   });
 
   if (!parsed.success) {
