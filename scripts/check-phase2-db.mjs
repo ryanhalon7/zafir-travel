@@ -45,10 +45,43 @@ try {
       days: true,
       events: true,
       members: true,
+      expenses: true,
+      packingItems: true,
+      photos: true,
+      documents: true,
     },
   });
 
-  if (!trip || trip.days.length !== 6 || trip.events.length < 8 || trip.members.length !== 2) {
+  const users = await prisma.user.findMany({
+    select: { id: true, email: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  if (!trip) {
+    console.error("Morocco seed trip is missing.");
+    process.exit(1);
+  }
+
+  console.log("App users:", users.map((user) => `${user.email} (${user.id})`).join(", "));
+  console.log("Morocco seed counts:", {
+    members: trip.members.length,
+    days: trip.days.length,
+    events: trip.events.length,
+    expenses: trip.expenses.length,
+    packingItems: trip.packingItems.length,
+    photos: trip.photos.length,
+    documents: trip.documents.length,
+  });
+
+  if (
+    trip.days.length !== 6 ||
+    trip.events.length < 8 ||
+    trip.members.length < 1 ||
+    trip.expenses.length < 1 ||
+    trip.packingItems.length < 1 ||
+    trip.photos.length < 1 ||
+    trip.documents.length < 1
+  ) {
     console.error("Phase 2 seed data is missing or incomplete.");
     process.exit(1);
   }

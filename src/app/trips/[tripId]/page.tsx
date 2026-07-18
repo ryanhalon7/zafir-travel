@@ -141,6 +141,17 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   const supabase = createClient();
   const photos = await Promise.all(
     trip.photos.map(async (photo) => {
+      if (photo.storagePath.startsWith("seed-external:")) {
+        return {
+          id: photo.id,
+          url: photo.storagePath.slice("seed-external:".length),
+          fileName: photo.fileName,
+          caption: photo.caption ?? "",
+          uploaderName: photo.uploader.displayName ?? photo.uploader.email,
+          createdAt: formatDate(photo.createdAt),
+        };
+      }
+
       const { data } = await supabase.storage
         .from("trip-photos")
         .createSignedUrl(photo.storagePath, 60 * 60);
@@ -182,6 +193,20 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   }));
   const documents = await Promise.all(
     trip.documents.map(async (document) => {
+      if (document.storagePath.startsWith("seed/")) {
+        return {
+          id: document.id,
+          url: `/${document.storagePath}`,
+          fileName: document.fileName,
+          mimeType: document.mimeType,
+          fileSize: formatFileSize(document.fileSize),
+          category: document.category,
+          description: document.description ?? "",
+          uploaderName: document.uploader.displayName ?? document.uploader.email,
+          createdAt: formatDate(document.createdAt),
+        };
+      }
+
       const { data } = await supabase.storage
         .from("trip-documents")
         .createSignedUrl(document.storagePath, 60 * 60, {
