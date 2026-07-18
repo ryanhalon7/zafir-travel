@@ -17,21 +17,32 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, children, disabled, ...props }, ref) => {
     const { pending } = useFormStatus();
-    const Comp = asChild ? Slot : "button";
     const isSubmit = !asChild && (props.type === "submit" || Boolean(props.formAction));
     const isPending = isSubmit && pending;
 
+    if (asChild) {
+      return (
+        <Slot
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          {...props}
+        >
+          {children}
+        </Slot>
+      );
+    }
+
     return (
-      <Comp
+      <button
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
-        disabled={asChild ? undefined : disabled || isPending}
+        disabled={disabled || isPending}
         aria-busy={isPending || undefined}
         {...props}
       >
         {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
         {children}
-      </Comp>
+      </button>
     );
   },
 );
