@@ -48,6 +48,16 @@ enum PackingCategory {
   MISCELLANEOUS
 }
 
+enum DocumentCategory {
+  FLIGHT
+  LODGING
+  IDENTIFICATION
+  INSURANCE
+  RESERVATION
+  TRANSPORT
+  OTHER
+}
+
 model User {
   id            String       @id @db.Uuid
   email         String       @unique
@@ -57,6 +67,7 @@ model User {
   uploadedPhotos TripPhoto[]
   paidExpenses   TripExpense[]
   packingAssignments PackingItem[]
+  uploadedDocuments TripDocument[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -83,6 +94,7 @@ model Trip {
   photos         TripPhoto[]
   expenses       TripExpense[]
   packingItems   PackingItem[]
+  documents      TripDocument[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
@@ -191,4 +203,24 @@ model PackingItem {
   @@index([tripId, category, isPacked])
   @@index([assignedToId])
   @@map("packing_items")
+}
+
+model TripDocument {
+  id          String           @id @default(cuid())
+  tripId      String
+  uploaderId  String           @db.Uuid
+  storagePath String           @unique
+  fileName    String
+  mimeType    String
+  fileSize    Int
+  category    DocumentCategory @default(OTHER)
+  description String?
+  trip        Trip             @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  uploader    User             @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([tripId, category, createdAt])
+  @@index([uploaderId])
+  @@map("trip_documents")
 }

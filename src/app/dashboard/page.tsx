@@ -172,7 +172,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <Link
                 key={trip.id}
                 href={`/trips/${trip.id}`}
-                className="group block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-muted-gold focus-visible:ring-offset-2"
+                className="group block rounded-lg active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-muted-gold focus-visible:ring-offset-2"
                 aria-label={`Open ${trip.name}`}
               >
               <Card className="h-full overflow-hidden transition duration-200 group-hover:-translate-y-1 group-hover:shadow-luxe">

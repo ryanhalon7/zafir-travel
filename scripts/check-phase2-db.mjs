@@ -48,7 +48,7 @@ try {
     },
   });
 
-  if (!trip || trip.days.length !== 6 || trip.events.length < 8 || trip.members.length !== 1) {
+  if (!trip || trip.days.length !== 6 || trip.events.length < 8 || trip.members.length !== 2) {
     console.error("Phase 2 seed data is missing or incomplete.");
     process.exit(1);
   }

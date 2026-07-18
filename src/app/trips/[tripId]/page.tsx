@@ -8,6 +8,7 @@ import { TripPlanner } from "@/components/trips/trip-planner";
 import { PhotoGallery } from "@/components/trips/photo-gallery";
 import { BudgetBoard } from "@/components/trips/budget-board";
 import { PackingList } from "@/components/trips/packing-list";
+import { DocumentVault } from "@/components/trips/document-vault";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -104,6 +105,14 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
           { createdAt: "asc" },
         ],
       },
+      documents: {
+        include: {
+          uploader: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
     },
   });
 
@@ -171,6 +180,27 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
     notes: item.notes ?? "",
     isPacked: item.isPacked,
   }));
+  const documents = await Promise.all(
+    trip.documents.map(async (document) => {
+      const { data } = await supabase.storage
+        .from("trip-documents")
+        .createSignedUrl(document.storagePath, 60 * 60, {
+          download: document.fileName,
+        });
+
+      return {
+        id: document.id,
+        url: data?.signedUrl ?? "",
+        fileName: document.fileName,
+        mimeType: document.mimeType,
+        fileSize: formatFileSize(document.fileSize),
+        category: document.category,
+        description: document.description ?? "",
+        uploaderName: document.uploader.displayName ?? document.uploader.email,
+        createdAt: formatDate(document.createdAt),
+      };
+    }),
+  );
 
   return (
     <AppShell userEmail={user.email ?? ""}>
@@ -353,20 +383,18 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
           <PackingList tripId={trip.id} members={budgetMembers} items={packingItems} />
         </TabsContent>
         <TabsContent value="documents">
-          <StubCard title="Documents" copy="The document vault arrives in Phase 7." />
+          <DocumentVault
+            tripId={trip.id}
+            documents={documents.filter((document) => document.url)}
+          />
         </TabsContent>
       </Tabs>
     </AppShell>
   );
 }
 
-function StubCard({ title, copy }: { title: string; copy: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{copy}</CardDescription>
-      </CardHeader>
-    </Card>
-  );
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

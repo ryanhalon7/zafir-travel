@@ -2,6 +2,7 @@
 
 import {
   EventCategory,
+  DocumentCategory,
   ExpenseCategory,
   PackingCategory,
   TripMemberRole,
@@ -128,6 +129,17 @@ const packingItemUpdateSchema = packingItemSchema.extend({
 const packingItemIdSchema = z.object({
   tripId: z.string().min(1),
   itemId: z.string().min(1),
+});
+
+const documentUploadSchema = z.object({
+  tripId: z.string().min(1),
+  category: z.nativeEnum(DocumentCategory),
+  description: z.string().trim().max(300).optional(),
+});
+
+const documentDeleteSchema = z.object({
+  tripId: z.string().min(1),
+  documentId: z.string().min(1),
 });
 
 function withMessage(path: string, message: string) {
@@ -1011,4 +1023,134 @@ export async function deletePackingItemAction(formData: FormData) {
 
   revalidatePath(`/trips/${parsed.data.tripId}`);
   redirect(withMessage(`/trips/${parsed.data.tripId}`, "Packing item deleted."));
+}
+
+const allowedDocumentTypes = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "text/plain",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
+export async function uploadTripDocumentsAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = documentUploadSchema.safeParse({
+    tripId: formData.get("tripId"),
+    category: formData.get("category"),
+    description: formData.get("description"),
+  });
+
+  if (!parsed.success) {
+    redirect(withMessage("/dashboard", "Document details are incomplete."));
+  }
+
+  await requireTripMembership(user.id, parsed.data.tripId);
+  const files = formData
+    .getAll("documents")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+
+  if (files.length === 0 || files.length > 10) {
+    redirect(withMessage(`/trips/${parsed.data.tripId}`, "Choose between 1 and 10 documents."));
+  }
+
+  const invalidFile = files.find(
+    (file) => !allowedDocumentTypes.has(file.type) || file.size > 20 * 1024 * 1024,
+  );
+
+  if (invalidFile) {
+    redirect(
+      withMessage(
+        `/trips/${parsed.data.tripId}`,
+        "Documents must be PDF, image, text, or Word files under 20 MB.",
+      ),
+    );
+  }
+
+  const supabase = createClient();
+  const uploadedPaths: string[] = [];
+
+  try {
+    for (const file of files) {
+      const storagePath = `${parsed.data.tripId}/${user.id}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+      const { error } = await supabase.storage.from("trip-documents").upload(storagePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      uploadedPaths.push(storagePath);
+      await prisma.tripDocument.create({
+        data: {
+          tripId: parsed.data.tripId,
+          uploaderId: user.id,
+          storagePath,
+          fileName: file.name,
+          mimeType: file.type,
+          fileSize: file.size,
+          category: parsed.data.category,
+          description: parsed.data.description || null,
+        },
+      });
+    }
+  } catch (error) {
+    if (uploadedPaths.length > 0) {
+      await supabase.storage.from("trip-documents").remove(uploadedPaths);
+      await prisma.tripDocument.deleteMany({ where: { storagePath: { in: uploadedPaths } } });
+    }
+
+    redirect(
+      withMessage(
+        `/trips/${parsed.data.tripId}`,
+        error instanceof Error ? error.message : "Documents could not be uploaded.",
+      ),
+    );
+  }
+
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  redirect(
+    withMessage(
+      `/trips/${parsed.data.tripId}`,
+      `${files.length} document${files.length === 1 ? "" : "s"} added.`,
+    ),
+  );
+}
+
+export async function deleteTripDocumentAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = documentDeleteSchema.safeParse({
+    tripId: formData.get("tripId"),
+    documentId: formData.get("documentId"),
+  });
+
+  if (!parsed.success) {
+    redirect(withMessage("/dashboard", "Document could not be deleted."));
+  }
+
+  await requireTripMembership(user.id, parsed.data.tripId);
+  const document = await prisma.tripDocument.findFirst({
+    where: { id: parsed.data.documentId, tripId: parsed.data.tripId },
+    select: { id: true, storagePath: true },
+  });
+
+  if (!document) {
+    redirect(withMessage(`/trips/${parsed.data.tripId}`, "Document was not found."));
+  }
+
+  const supabase = createClient();
+  const { error } = await supabase.storage.from("trip-documents").remove([document.storagePath]);
+
+  if (error) {
+    redirect(withMessage(`/trips/${parsed.data.tripId}`, error.message));
+  }
+
+  await prisma.tripDocument.delete({ where: { id: document.id } });
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  redirect(withMessage(`/trips/${parsed.data.tripId}`, "Document deleted."));
 }

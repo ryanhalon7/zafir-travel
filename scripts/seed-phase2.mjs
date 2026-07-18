@@ -1,5 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
-import { PrismaClient, EventCategory, TripMemberRole, TripStatus } from "@prisma/client";
+import {
+  PrismaClient,
+  EventCategory,
+  ExpenseCategory,
+  PackingCategory,
+  TripMemberRole,
+  TripStatus,
+} from "@prisma/client";
 
 function loadEnvFile(path) {
   if (!existsSync(path)) {
@@ -95,6 +102,8 @@ try {
       coverPhotoUrl:
         "https://images.unsplash.com/photo-1548018560-c7196548e84d?auto=format&fit=crop&w=1600&q=80",
       coverPhotoPath: null,
+      budgetAmount: 4800,
+      currency: "USD",
     },
     create: {
       id: tripId,
@@ -107,6 +116,8 @@ try {
       createdById: travelerOneId,
       coverPhotoUrl:
         "https://images.unsplash.com/photo-1548018560-c7196548e84d?auto=format&fit=crop&w=1600&q=80",
+      budgetAmount: 4800,
+      currency: "USD",
       members: {
         create: {
           userId: travelerOneId,
@@ -133,10 +144,20 @@ try {
     },
   });
 
-  await prisma.tripMember.deleteMany({
+  await prisma.tripMember.upsert({
     where: {
+      tripId_userId: {
+        tripId,
+        userId: travelerTwoId,
+      },
+    },
+    update: {
+      role: TripMemberRole.PARTNER,
+    },
+    create: {
       tripId,
       userId: travelerTwoId,
+      role: TripMemberRole.PARTNER,
     },
   });
 
@@ -258,7 +279,42 @@ try {
     ],
   });
 
-  console.log("Seeded Phase 2 example trip: Morocco Anniversary Escape.");
+  await prisma.tripExpense.deleteMany({ where: { tripId } });
+  await prisma.tripExpense.createMany({
+    data: [
+      { tripId, payerId: travelerOneId, title: "Round-trip flights", amount: 1284.4, category: ExpenseCategory.FLIGHT, expenseDate: date("2026-06-18"), notes: "Two seats, including checked bags." },
+      { tripId, payerId: travelerTwoId, title: "Riad Yasmine deposit", amount: 465, category: ExpenseCategory.LODGING, expenseDate: date("2026-07-02"), notes: "Three nights with breakfast." },
+      { tripId, payerId: travelerOneId, title: "Atlas Mountains private guide", amount: 220, category: ExpenseCategory.ACTIVITY, expenseDate: date("2026-07-21"), notes: "Includes driver and lunch in Imlil." },
+      { tripId, payerId: travelerTwoId, title: "Essaouira hotel", amount: 378.5, category: ExpenseCategory.LODGING, expenseDate: date("2026-08-03"), notes: "Ocean-view room for two nights." },
+      { tripId, payerId: travelerOneId, title: "Airport transfer", amount: 38, category: ExpenseCategory.TRANSPORT, expenseDate: date("2026-08-09"), notes: "Pre-arranged pickup at Menara Airport." },
+      { tripId, payerId: travelerTwoId, title: "Dinner at Nomad", amount: 96.25, category: ExpenseCategory.FOOD, expenseDate: date("2026-10-09"), notes: "Rooftop anniversary dinner." },
+      { tripId, payerId: travelerOneId, title: "Souk ceramics", amount: 74, category: ExpenseCategory.SHOPPING, expenseDate: date("2026-10-09"), notes: "Hand-painted serving bowls." },
+      { tripId, payerId: travelerTwoId, title: "Port seafood lunch", amount: 42.8, category: ExpenseCategory.FOOD, expenseDate: date("2026-10-12"), notes: "Grilled fish and calamari." },
+    ],
+  });
+
+  await prisma.packingItem.deleteMany({ where: { tripId } });
+  await prisma.packingItem.createMany({
+    data: [
+      { tripId, assignedToId: travelerOneId, name: "Linen shirts", quantity: 3, category: PackingCategory.CLOTHING, isPacked: true },
+      { tripId, assignedToId: travelerTwoId, name: "Lightweight dresses", quantity: 3, category: PackingCategory.CLOTHING, isPacked: true, notes: "Include one shoulder-covering layer for mosque visits." },
+      { tripId, name: "Warm Atlas layers", quantity: 2, category: PackingCategory.CLOTHING, isPacked: false },
+      { tripId, assignedToId: travelerTwoId, name: "Sunscreen SPF 50", quantity: 1, category: PackingCategory.TOILETRIES, isPacked: true },
+      { tripId, name: "Travel-size first aid kit", quantity: 1, category: PackingCategory.MEDICATION, isPacked: false },
+      { tripId, assignedToId: travelerOneId, name: "Passports", quantity: 2, category: PackingCategory.DOCUMENTS, isPacked: true, notes: "Double-check six-month validity." },
+      { tripId, assignedToId: travelerTwoId, name: "Travel insurance printout", quantity: 1, category: PackingCategory.DOCUMENTS, isPacked: false },
+      { tripId, assignedToId: travelerOneId, name: "Universal power adapter", quantity: 2, category: PackingCategory.ELECTRONICS, isPacked: true },
+      { tripId, assignedToId: travelerTwoId, name: "Camera and spare battery", quantity: 1, category: PackingCategory.ELECTRONICS, isPacked: false },
+      { tripId, name: "Portable charger", quantity: 1, category: PackingCategory.ELECTRONICS, isPacked: true },
+      { tripId, assignedToId: travelerOneId, name: "Comfortable walking shoes", quantity: 1, category: PackingCategory.GEAR, isPacked: true },
+      { tripId, assignedToId: travelerTwoId, name: "Packable day bag", quantity: 1, category: PackingCategory.GEAR, isPacked: false },
+      { tripId, name: "Reusable water bottles", quantity: 2, category: PackingCategory.GEAR, isPacked: false },
+      { tripId, name: "Small bills for tips", quantity: 1, category: PackingCategory.MISCELLANEOUS, isPacked: false, notes: "Withdraw dirhams after arrival." },
+      { tripId, assignedToId: travelerTwoId, name: "Anniversary surprise", quantity: 1, category: PackingCategory.MISCELLANEOUS, isPacked: true, notes: "Do not let Ryan open this bag." },
+    ],
+  });
+
+  console.log("Seeded Morocco example trip with itinerary, budget, and packing data.");
 } finally {
   await prisma.$disconnect();
 }

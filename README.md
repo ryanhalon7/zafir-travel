@@ -65,6 +65,16 @@ Implemented:
 - Overall and per-traveler packing progress
 - Packing item editing and deletion
 
+## Phase 7 Document Vault
+
+Implemented:
+
+- Private, trip-member-only document storage
+- Multi-file uploads for PDF, image, text, and Word files
+- Categories, descriptions, file metadata, and uploader attribution
+- Secure signed downloads from Supabase Storage
+- Member-authorized document deletion
+
 ## Local Setup
 
 1. Fill `.env.local` with your Supabase project values.
