@@ -7,6 +7,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { TripPlanner } from "@/components/trips/trip-planner";
 import { PhotoGallery } from "@/components/trips/photo-gallery";
 import { BudgetBoard } from "@/components/trips/budget-board";
+import { PackingList } from "@/components/trips/packing-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -94,6 +95,15 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
           { createdAt: "desc" },
         ],
       },
+      packingItems: {
+        include: {
+          assignedTo: true,
+        },
+        orderBy: [
+          { category: "asc" },
+          { createdAt: "asc" },
+        ],
+      },
     },
   });
 
@@ -150,6 +160,16 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
     notes: expense.notes ?? "",
     payerId: expense.payerId,
     payerName: expense.payer.displayName ?? expense.payer.email,
+  }));
+  const packingItems = trip.packingItems.map((item) => ({
+    id: item.id,
+    name: item.name,
+    quantity: item.quantity,
+    category: item.category,
+    assignedToId: item.assignedToId ?? "",
+    assignedToName: item.assignedTo?.displayName ?? item.assignedTo?.email ?? "",
+    notes: item.notes ?? "",
+    isPacked: item.isPacked,
   }));
 
   return (
@@ -330,7 +350,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
           />
         </TabsContent>
         <TabsContent value="packing">
-          <StubCard title="Packing" copy="Packing lists arrive in Phase 6." />
+          <PackingList tripId={trip.id} members={budgetMembers} items={packingItems} />
         </TabsContent>
         <TabsContent value="documents">
           <StubCard title="Documents" copy="The document vault arrives in Phase 7." />

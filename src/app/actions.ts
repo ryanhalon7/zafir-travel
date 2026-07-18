@@ -1,6 +1,12 @@
 "use server";
 
-import { EventCategory, ExpenseCategory, TripMemberRole, TripStatus } from "@prisma/client";
+import {
+  EventCategory,
+  ExpenseCategory,
+  PackingCategory,
+  TripMemberRole,
+  TripStatus,
+} from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -104,6 +110,24 @@ const expenseUpdateSchema = expenseSchema.extend({
 const expenseDeleteSchema = z.object({
   tripId: z.string().min(1),
   expenseId: z.string().min(1),
+});
+
+const packingItemSchema = z.object({
+  tripId: z.string().min(1),
+  name: z.string().trim().min(1).max(120),
+  quantity: z.coerce.number().int().min(1).max(99),
+  category: z.nativeEnum(PackingCategory),
+  assignedToId: z.union([z.string().uuid(), z.literal("")]),
+  notes: z.string().trim().max(300).optional(),
+});
+
+const packingItemUpdateSchema = packingItemSchema.extend({
+  itemId: z.string().min(1),
+});
+
+const packingItemIdSchema = z.object({
+  tripId: z.string().min(1),
+  itemId: z.string().min(1),
 });
 
 function withMessage(path: string, message: string) {
@@ -860,4 +884,131 @@ export async function deleteExpenseAction(formData: FormData) {
 
   revalidatePath(`/trips/${parsed.data.tripId}`);
   redirect(withMessage(`/trips/${parsed.data.tripId}`, "Expense deleted."));
+}
+
+async function requirePackingAssignee(tripId: string, assignedToId: string) {
+  if (!assignedToId) {
+    return;
+  }
+
+  const member = await prisma.tripMember.findUnique({
+    where: { tripId_userId: { tripId, userId: assignedToId } },
+    select: { id: true },
+  });
+
+  if (!member) {
+    redirect(withMessage(`/trips/${tripId}`, "The selected traveler is not a trip member."));
+  }
+}
+
+export async function createPackingItemAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = packingItemSchema.safeParse({
+    tripId: formData.get("tripId"),
+    name: formData.get("name"),
+    quantity: formData.get("quantity"),
+    category: formData.get("category"),
+    assignedToId: formData.get("assignedToId") || "",
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    redirect(withMessage("/dashboard", "Packing item details are incomplete."));
+  }
+
+  await requireTripMembership(user.id, parsed.data.tripId);
+  await requirePackingAssignee(parsed.data.tripId, parsed.data.assignedToId);
+  await prisma.packingItem.create({
+    data: {
+      tripId: parsed.data.tripId,
+      name: parsed.data.name,
+      quantity: parsed.data.quantity,
+      category: parsed.data.category,
+      assignedToId: parsed.data.assignedToId || null,
+      notes: parsed.data.notes || null,
+    },
+  });
+
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  redirect(withMessage(`/trips/${parsed.data.tripId}`, "Packing item added."));
+}
+
+export async function updatePackingItemAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = packingItemUpdateSchema.safeParse({
+    tripId: formData.get("tripId"),
+    itemId: formData.get("itemId"),
+    name: formData.get("name"),
+    quantity: formData.get("quantity"),
+    category: formData.get("category"),
+    assignedToId: formData.get("assignedToId") || "",
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    redirect(withMessage("/dashboard", "Packing item could not be saved."));
+  }
+
+  await requireTripMembership(user.id, parsed.data.tripId);
+  await requirePackingAssignee(parsed.data.tripId, parsed.data.assignedToId);
+  await prisma.packingItem.updateMany({
+    where: { id: parsed.data.itemId, tripId: parsed.data.tripId },
+    data: {
+      name: parsed.data.name,
+      quantity: parsed.data.quantity,
+      category: parsed.data.category,
+      assignedToId: parsed.data.assignedToId || null,
+      notes: parsed.data.notes || null,
+    },
+  });
+
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  redirect(withMessage(`/trips/${parsed.data.tripId}`, "Packing item saved."));
+}
+
+export async function togglePackingItemAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = packingItemIdSchema.safeParse({
+    tripId: formData.get("tripId"),
+    itemId: formData.get("itemId"),
+  });
+
+  if (!parsed.success) {
+    return;
+  }
+
+  await requireTripMembership(user.id, parsed.data.tripId);
+  const item = await prisma.packingItem.findFirst({
+    where: { id: parsed.data.itemId, tripId: parsed.data.tripId },
+    select: { isPacked: true },
+  });
+
+  if (item) {
+    await prisma.packingItem.update({
+      where: { id: parsed.data.itemId },
+      data: { isPacked: !item.isPacked },
+    });
+  }
+
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+}
+
+export async function deletePackingItemAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = packingItemIdSchema.safeParse({
+    tripId: formData.get("tripId"),
+    itemId: formData.get("itemId"),
+  });
+
+  if (!parsed.success) {
+    redirect(withMessage("/dashboard", "Packing item could not be deleted."));
+  }
+
+  await requireTripMembership(user.id, parsed.data.tripId);
+  await prisma.packingItem.deleteMany({
+    where: { id: parsed.data.itemId, tripId: parsed.data.tripId },
+  });
+
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  redirect(withMessage(`/trips/${parsed.data.tripId}`, "Packing item deleted."));
 }

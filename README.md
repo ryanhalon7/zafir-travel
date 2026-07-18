@@ -55,6 +55,16 @@ Implemented:
 - Equal-split settlement guidance for two travelers
 - Expense editing and deletion
 
+## Phase 6 Shared Packing
+
+Implemented:
+
+- Category-grouped packing checklist with quantities and notes
+- Optional traveler assignment or shared ownership
+- One-tap packed and unpacked status changes
+- Overall and per-traveler packing progress
+- Packing item editing and deletion
+
 ## Local Setup
 
 1. Fill `.env.local` with your Supabase project values.
