@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { FileUpload } from "@/components/ui/file-upload";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
@@ -119,7 +120,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="coverPhoto">Cover photo</Label>
-                  <Input id="coverPhoto" name="coverPhoto" type="file" accept="image/*" />
+                  <FileUpload
+                    id="coverPhoto"
+                    name="coverPhoto"
+                    accept="image/*"
+                    buttonText="Choose cover"
+                  />
                 </div>
               </div>
               <Button className="w-full sm:w-fit" type="submit">

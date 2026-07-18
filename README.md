@@ -36,6 +36,15 @@ Implemented:
 
 Set `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` locally and in Vercel to enable maps.
 
+## Phase 4 Trip Photos
+
+Implemented:
+
+- Private shared photo gallery for each trip
+- Multi-image uploads with optional captions
+- Full-screen photo viewing and member-authorized deletion
+- Signed Supabase Storage URLs for private images
+
 ## Local Setup
 
 1. Fill `.env.local` with your Supabase project values.

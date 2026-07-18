@@ -31,18 +31,26 @@ begin
     with check (bucket_id = 'trip-covers');
   end if;
 
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'storage'
-      and tablename = 'objects'
-      and policyname = 'Authenticated users can manage trip photos'
-  ) then
-    create policy "Authenticated users can manage trip photos"
-    on storage.objects for all
-    to authenticated
-    using (bucket_id = 'trip-photos')
-    with check (bucket_id = 'trip-photos');
-  end if;
+  drop policy if exists "Authenticated users can manage trip photos" on storage.objects;
+  create policy "Authenticated users can manage trip photos"
+  on storage.objects for all
+  to authenticated
+  using (
+    bucket_id = 'trip-photos'
+    and exists (
+      select 1 from public.trip_members
+      where "tripId" = (storage.foldername(name))[1]
+        and "userId" = auth.uid()
+    )
+  )
+  with check (
+    bucket_id = 'trip-photos'
+    and exists (
+      select 1 from public.trip_members
+      where "tripId" = (storage.foldername(name))[1]
+        and "userId" = auth.uid()
+    )
+  );
 
   if not exists (
     select 1 from pg_policies

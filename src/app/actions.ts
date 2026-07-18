@@ -71,6 +71,16 @@ const reorderSchema = z.object({
   eventIds: z.string().transform((value) => JSON.parse(value) as string[]),
 });
 
+const photoUploadSchema = z.object({
+  tripId: z.string().min(1),
+  caption: z.string().trim().max(240).optional(),
+});
+
+const photoDeleteSchema = z.object({
+  tripId: z.string().min(1),
+  photoId: z.string().min(1),
+});
+
 function withMessage(path: string, message: string) {
   return `${path}?message=${encodeURIComponent(message)}`;
 }
@@ -594,4 +604,110 @@ export async function reorderEventsAction(formData: FormData) {
   );
 
   revalidatePath(`/trips/${parsed.data.tripId}`);
+}
+
+export async function uploadTripPhotosAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = photoUploadSchema.safeParse({
+    tripId: formData.get("tripId"),
+    caption: formData.get("caption") || undefined,
+  });
+
+  if (!parsed.success) {
+    redirect(withMessage("/dashboard", "Photos could not be uploaded."));
+  }
+
+  await requireTripMembership(user.id, parsed.data.tripId);
+
+  const files = formData
+    .getAll("photos")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+
+  if (files.length === 0 || files.length > 12) {
+    redirect(withMessage(`/trips/${parsed.data.tripId}`, "Choose between 1 and 12 photos."));
+  }
+
+  const invalidFile = files.find(
+    (file) => !file.type.startsWith("image/") || file.size > 12 * 1024 * 1024,
+  );
+
+  if (invalidFile) {
+    redirect(withMessage(`/trips/${parsed.data.tripId}`, "Each photo must be an image under 12 MB."));
+  }
+
+  const supabase = createClient();
+  const uploadedPaths: string[] = [];
+
+  try {
+    for (const file of files) {
+      const storagePath = `${parsed.data.tripId}/${user.id}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+      const { error } = await supabase.storage.from("trip-photos").upload(storagePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      uploadedPaths.push(storagePath);
+      await prisma.tripPhoto.create({
+        data: {
+          tripId: parsed.data.tripId,
+          uploaderId: user.id,
+          storagePath,
+          fileName: file.name,
+          caption: parsed.data.caption || null,
+        },
+      });
+    }
+  } catch (error) {
+    if (uploadedPaths.length > 0) {
+      await supabase.storage.from("trip-photos").remove(uploadedPaths);
+      await prisma.tripPhoto.deleteMany({ where: { storagePath: { in: uploadedPaths } } });
+    }
+    redirect(
+      withMessage(
+        `/trips/${parsed.data.tripId}`,
+        error instanceof Error ? error.message : "Photos could not be uploaded.",
+      ),
+    );
+  }
+
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  redirect(withMessage(`/trips/${parsed.data.tripId}`, `${files.length} photo${files.length === 1 ? "" : "s"} added.`));
+}
+
+export async function deleteTripPhotoAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = photoDeleteSchema.safeParse({
+    tripId: formData.get("tripId"),
+    photoId: formData.get("photoId"),
+  });
+
+  if (!parsed.success) {
+    redirect(withMessage("/dashboard", "Photo could not be deleted."));
+  }
+
+  await requireTripMembership(user.id, parsed.data.tripId);
+  const photo = await prisma.tripPhoto.findFirst({
+    where: { id: parsed.data.photoId, tripId: parsed.data.tripId },
+    select: { id: true, storagePath: true },
+  });
+
+  if (!photo) {
+    redirect(withMessage(`/trips/${parsed.data.tripId}`, "Photo was not found."));
+  }
+
+  const supabase = createClient();
+  const { error } = await supabase.storage.from("trip-photos").remove([photo.storagePath]);
+
+  if (error) {
+    redirect(withMessage(`/trips/${parsed.data.tripId}`, error.message));
+  }
+
+  await prisma.tripPhoto.delete({ where: { id: photo.id } });
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  redirect(withMessage(`/trips/${parsed.data.tripId}`, "Photo deleted."));
 }

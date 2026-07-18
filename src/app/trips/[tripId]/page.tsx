@@ -5,6 +5,7 @@ import { ArrowLeft, CalendarDays, MapPin, Trash2, UsersRound } from "lucide-reac
 import { deleteTripAction, updateTripAction } from "@/app/actions";
 import { AppShell } from "@/components/shell/app-shell";
 import { TripPlanner } from "@/components/trips/trip-planner";
+import { PhotoGallery } from "@/components/trips/photo-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { FileUpload } from "@/components/ui/file-upload";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { dateInputValue, formatDate, timeInputValue } from "@/lib/date-format";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 
 type TripPageProps = {
   params: {
@@ -73,6 +76,14 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
           dayNumber: "asc",
         },
       },
+      photos: {
+        include: {
+          uploader: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
     },
   });
 
@@ -97,6 +108,24 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
       notes: event.notes ?? "",
     })),
   }));
+
+  const supabase = createClient();
+  const photos = await Promise.all(
+    trip.photos.map(async (photo) => {
+      const { data } = await supabase.storage
+        .from("trip-photos")
+        .createSignedUrl(photo.storagePath, 60 * 60);
+
+      return {
+        id: photo.id,
+        url: data?.signedUrl ?? "",
+        fileName: photo.fileName,
+        caption: photo.caption ?? "",
+        uploaderName: photo.uploader.displayName ?? photo.uploader.email,
+        createdAt: formatDate(photo.createdAt),
+      };
+    }),
+  );
 
   return (
     <AppShell userEmail={user.email ?? ""}>
@@ -219,7 +248,12 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="coverPhoto">Replace cover photo</Label>
-                      <Input id="coverPhoto" name="coverPhoto" type="file" accept="image/*" />
+                      <FileUpload
+                        id="coverPhoto"
+                        name="coverPhoto"
+                        accept="image/*"
+                        buttonText="Choose new cover"
+                      />
                     </div>
                   </div>
                   <Button className="w-full sm:w-fit" type="submit">
@@ -259,7 +293,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
         </TabsContent>
 
         <TabsContent value="photos">
-          <StubCard title="Photos" copy="Photo albums arrive in Phase 4." />
+          <PhotoGallery tripId={trip.id} photos={photos.filter((photo) => photo.url)} />
         </TabsContent>
         <TabsContent value="budget">
           <StubCard title="Budget" copy="Budget tracking arrives in Phase 5." />

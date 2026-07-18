@@ -1,4 +1,7 @@
-import { Compass, LogOut } from "lucide-react";
+import Image from "next/image";
+import { LogOut } from "lucide-react";
+
+import darkLogo from "../../../assets/Favicon-Dark.svg";
 
 import { signOutAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
@@ -14,8 +17,13 @@ export function AppShell({ children, userEmail }: AppShellProps) {
       <header className="sticky top-0 z-20 border-b border-burgundy/10 bg-ivory/82 backdrop-blur-xl">
         <div className="container flex min-h-20 items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-burgundy text-ivory shadow-soft">
-              <Compass className="h-5 w-5" aria-hidden="true" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted-gold/15 shadow-soft">
+              <Image
+                src={darkLogo}
+                alt=""
+                aria-hidden="true"
+                className="h-8 w-auto"
+              />
             </div>
             <div>
               <p className="font-heading text-2xl leading-none text-burgundy">
