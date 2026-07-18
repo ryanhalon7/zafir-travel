@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+import { MutationFeedback } from "@/components/ui/mutation-feedback";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { dateInputValue, formatDate, timeInputValue } from "@/lib/date-format";
@@ -275,6 +276,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
         </div>
       ) : null}
 
+      <MutationFeedback message={searchParams?.message}>
       <Tabs defaultValue="itinerary" className="mt-8">
         <TabsList>
           <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
@@ -414,6 +416,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
           />
         </TabsContent>
       </Tabs>
+      </MutationFeedback>
     </AppShell>
   );
 }

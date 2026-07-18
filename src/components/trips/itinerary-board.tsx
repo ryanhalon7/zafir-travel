@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Clock, GripVertical, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 
 import {
@@ -87,6 +87,13 @@ export function ItineraryBoard({
   const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
   const [draggedDayId, setDraggedDayId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+
+  // Server actions send fresh `days` back through the RSC payload. Keep the
+  // local drag-and-drop copy in step with that payload so creates, edits, and
+  // deletes are visible without a manual browser refresh.
+  useEffect(() => {
+    setOrderedDays(days);
+  }, [days]);
 
   const eventCounts = useMemo(
     () => orderedDays.reduce((count, day) => count + day.events.length, 0),
@@ -263,8 +270,18 @@ function EventForm({
   dayId: string;
   event?: EventItem;
 }) {
+  function closeFormAfterSubmit(event: React.FormEvent<HTMLFormElement>) {
+    // Native constraint validation runs before submit, so this only closes a
+    // form whose fields are valid enough to reach the server action.
+    event.currentTarget.closest("details")?.removeAttribute("open");
+  }
+
   return (
-    <form action={event ? updateEventAction : createEventAction} className="grid gap-4">
+    <form
+      action={event ? updateEventAction : createEventAction}
+      className="grid gap-4"
+      onSubmit={closeFormAfterSubmit}
+    >
       <input name="tripId" type="hidden" value={tripId} />
       <input name="dayId" type="hidden" value={dayId} />
       {event ? <input name="eventId" type="hidden" value={event.id} /> : null}

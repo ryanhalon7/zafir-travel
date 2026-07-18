@@ -20,6 +20,19 @@ export function TripPlanner({ tripId, days }: { tripId: string; days: DayItem[] 
   const [selectedDayId, setSelectedDayId] = useState(days[0]?.id ?? "");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!days.some((day) => day.id === selectedDayId)) {
+      setSelectedDayId(days[0]?.id ?? "");
+    }
+
+    if (
+      selectedEventId &&
+      !days.some((day) => day.events.some((event) => event.id === selectedEventId))
+    ) {
+      setSelectedEventId(null);
+    }
+  }, [days, selectedDayId, selectedEventId]);
+
   function selectEvent(eventId: string, dayId: string) {
     setSelectedDayId(dayId);
     setSelectedEventId(eventId);
