@@ -17,6 +17,9 @@ const body = Montserrat({
 export const metadata: Metadata = {
   title: "Zafir Travel",
   description: "A private travel planning app for two.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
