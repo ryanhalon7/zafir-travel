@@ -4,12 +4,17 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 
 export async function getSessionUser() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = createClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-  return user;
+    return error ? null : user;
+  } catch {
+    return null;
+  }
 }
 
 export async function requireUser() {
