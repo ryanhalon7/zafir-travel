@@ -1,4 +1,5 @@
-import { CalendarDays, Copy, Plus, UsersRound } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, Copy, MapPin, Plus, UsersRound } from "lucide-react";
 
 import { createTripSpaceAction, joinTripSpaceAction } from "@/app/actions";
 import { AppShell } from "@/components/shell/app-shell";
@@ -13,6 +14,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
+import { formatDate } from "@/lib/date-format";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -72,19 +76,53 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
               <Plus className="h-5 w-5 text-terracotta" aria-hidden="true" />
-              Start a planning space
+              Create a trip
             </CardTitle>
             <CardDescription>
-              Create the shared home base for the trip.
+              Add the essentials now; the day-by-day itinerary opens after creation.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={createTripSpaceAction} className="flex flex-col gap-3 sm:flex-row">
-              <div className="min-w-0 flex-1 space-y-2">
+            <form action={createTripSpaceAction} className="grid gap-4">
+              <div className="space-y-2">
                 <Label htmlFor="name">Trip name</Label>
                 <Input id="name" name="name" placeholder="Morocco anniversary escape" required />
               </div>
-              <Button className="mt-auto" type="submit">
+              <div className="space-y-2">
+                <Label htmlFor="destinations">Destination(s)</Label>
+                <Textarea
+                  id="destinations"
+                  name="destinations"
+                  placeholder="Marrakesh, Essaouira"
+                  required
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="startDate">Start date</Label>
+                  <Input id="startDate" name="startDate" type="date" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endDate">End date</Label>
+                  <Input id="endDate" name="endDate" type="date" required />
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[1fr_1.15fr]">
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <NativeSelect id="status" name="status" defaultValue="PLANNING">
+                    <option value="PLANNING">Planning</option>
+                    <option value="UPCOMING">Upcoming</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="PAST">Past</option>
+                  </NativeSelect>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="coverPhoto">Cover photo</Label>
+                  <Input id="coverPhoto" name="coverPhoto" type="file" accept="image/*" />
+                </div>
+              </div>
+              <Button className="w-full sm:w-fit" type="submit">
                 Create
               </Button>
             </form>
@@ -125,8 +163,22 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         {trips.length > 0 ? (
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {trips.map((trip) => (
-              <Card key={trip.id} className="overflow-hidden">
-                <div className="h-28 bg-[linear-gradient(135deg,_rgba(184,93,59,0.88),_rgba(95,22,38,0.88)),url('https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?auto=format&fit=crop&w=1000&q=80')] bg-cover bg-center" />
+              <Link
+                key={trip.id}
+                href={`/trips/${trip.id}`}
+                className="group block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-muted-gold focus-visible:ring-offset-2"
+                aria-label={`Open ${trip.name}`}
+              >
+              <Card className="h-full overflow-hidden transition duration-200 group-hover:-translate-y-1 group-hover:shadow-luxe">
+                <div
+                  className="h-32 bg-cover bg-center"
+                  style={{
+                    backgroundImage: `linear-gradient(135deg, rgba(184,93,59,0.76), rgba(95,22,38,0.72)), url('${
+                      trip.coverPhotoUrl ??
+                      "https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?auto=format&fit=crop&w=1000&q=80"
+                    }')`,
+                  }}
+                />
                 <CardHeader>
                   <div className="mb-1 flex items-center justify-between gap-3">
                     <Badge>{trip.members.length}/2 travelers</Badge>
@@ -134,22 +186,32 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       {trip.inviteCode}
                     </span>
                   </div>
-                  <CardTitle>{trip.name}</CardTitle>
+                  <CardTitle className="transition group-hover:text-wine">{trip.name}</CardTitle>
                   <CardDescription>
                     {trip.members.map((member) => member.user.email).join(" + ")}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="flex items-center justify-between gap-4 text-sm text-espresso/65">
-                  <span className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-terracotta" aria-hidden="true" />
-                    Created {trip.createdAt.toLocaleDateString()}
-                  </span>
-                  <span className="flex items-center gap-2 font-semibold text-burgundy">
-                    <Copy className="h-4 w-4" aria-hidden="true" />
-                    Invite
+                <CardContent className="space-y-4 text-sm text-espresso/65">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-terracotta" aria-hidden="true" />
+                    {trip.destinations.length > 0 ? trip.destinations.join(", ") : "Destinations pending"}
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4 text-terracotta" aria-hidden="true" />
+                      {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
+                    </span>
+                    <span className="flex items-center gap-2 font-semibold text-burgundy">
+                      <Copy className="h-4 w-4" aria-hidden="true" />
+                      Invite
+                    </span>
+                  </div>
+                  <span className="inline-flex w-full items-center justify-center rounded-full border border-burgundy/20 px-5 py-2.5 font-semibold text-burgundy transition group-hover:bg-burgundy group-hover:text-ivory">
+                    Open trip
                   </span>
                 </CardContent>
               </Card>
+              </Link>
             ))}
           </div>
         ) : (

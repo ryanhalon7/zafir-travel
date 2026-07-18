@@ -14,6 +14,28 @@ Implemented:
 - Warm luxury design tokens, Playfair Display headings, and Montserrat body text
 - Supabase storage bucket SQL for future cover, photo, and document uploads
 
+## Phase 2 Trips & Itinerary Core
+
+Implemented:
+
+- Create, edit, and delete trips with destinations, dates, status, and Supabase cover uploads
+- Trip workspace with tabbed sections
+- Day-by-day itinerary generated from trip dates
+- Itinerary event create, edit, and delete
+- Drag-and-drop reordering of events within a day
+- Development seed trip with realistic Morocco itinerary data
+
+## Phase 3 Calendar & Map Views
+
+Implemented:
+
+- Itinerary, calendar, and map view toggle backed by the same event data
+- Month and week calendar views with scheduled events
+- Per-day Mapbox view using event latitude and longitude
+- Synchronized map pins and itinerary event selection
+
+Set `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` locally and in Vercel to enable maps.
+
 ## Local Setup
 
 1. Fill `.env.local` with your Supabase project values.
@@ -42,6 +64,13 @@ npm run lint
 npm run build
 npm run prisma:validate
 npm run phase1:db:check
+```
+
+After Phase 2 schema is applied, seed development data:
+
+```powershell
+npm run phase2:seed
+npm run phase2:db:check
 ```
 
 ## Development

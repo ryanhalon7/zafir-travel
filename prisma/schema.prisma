@@ -13,6 +13,21 @@ enum TripMemberRole {
   PARTNER
 }
 
+enum TripStatus {
+  PLANNING
+  UPCOMING
+  ACTIVE
+  PAST
+}
+
+enum EventCategory {
+  FLIGHT
+  LODGING
+  ACTIVITY
+  FOOD
+  TRANSPORT
+}
+
 model User {
   id            String       @id @db.Uuid
   email         String       @unique
@@ -26,14 +41,22 @@ model User {
 }
 
 model Trip {
-  id          String       @id @default(cuid())
-  name        String
-  inviteCode  String       @unique
-  createdById String       @db.Uuid
-  createdBy   User         @relation("TripCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  members     TripMember[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id             String           @id @default(cuid())
+  name           String
+  destinations   String[]         @default([])
+  startDate      DateTime?
+  endDate        DateTime?
+  coverPhotoUrl  String?
+  coverPhotoPath String?
+  status         TripStatus       @default(PLANNING)
+  inviteCode     String           @unique
+  createdById    String           @db.Uuid
+  createdBy      User             @relation("TripCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  members        TripMember[]
+  days           TripDay[]
+  events         ItineraryEvent[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   @@map("trips")
 }
@@ -49,4 +72,41 @@ model TripMember {
 
   @@unique([tripId, userId])
   @@map("trip_members")
+}
+
+model TripDay {
+  id        String           @id @default(cuid())
+  tripId    String
+  date      DateTime
+  dayNumber Int
+  trip      Trip             @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  events    ItineraryEvent[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([tripId, date])
+  @@unique([tripId, dayNumber])
+  @@map("trip_days")
+}
+
+model ItineraryEvent {
+  id           String        @id @default(cuid())
+  tripId       String
+  dayId        String
+  title        String
+  category     EventCategory
+  startTime    DateTime?
+  endTime      DateTime?
+  locationName String?
+  latitude     Float?
+  longitude    Float?
+  notes        String?
+  sortOrder    Int           @default(0)
+  trip         Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  day          TripDay       @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([tripId, dayId, sortOrder])
+  @@map("itinerary_events")
 }

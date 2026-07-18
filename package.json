@@ -8,16 +8,20 @@
     "start": "next start",
     "lint": "next lint",
     "prisma:validate": "prisma validate",
-    "phase1:db:check": "node scripts/check-phase1-db.mjs"
+    "phase1:db:check": "node scripts/check-phase1-db.mjs",
+    "phase2:seed": "node scripts/seed-phase2.mjs",
+    "phase2:db:check": "node scripts/check-phase2-db.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "@radix-ui/react-slot": "^1.3.0",
+    "@radix-ui/react-tabs": "^1.1.17",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.25.0",
+    "mapbox-gl": "^3.26.0",
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18",
