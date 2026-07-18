@@ -6,6 +6,7 @@ import { deleteTripAction, updateTripAction } from "@/app/actions";
 import { AppShell } from "@/components/shell/app-shell";
 import { TripPlanner } from "@/components/trips/trip-planner";
 import { PhotoGallery } from "@/components/trips/photo-gallery";
+import { BudgetBoard } from "@/components/trips/budget-board";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -84,6 +85,15 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
           createdAt: "desc",
         },
       },
+      expenses: {
+        include: {
+          payer: true,
+        },
+        orderBy: [
+          { expenseDate: "desc" },
+          { createdAt: "desc" },
+        ],
+      },
     },
   });
 
@@ -126,6 +136,21 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
       };
     }),
   );
+  const budgetMembers = trip.members.map((member) => ({
+    id: member.userId,
+    name: member.user.displayName ?? member.user.email,
+  }));
+  const expenses = trip.expenses.map((expense) => ({
+    id: expense.id,
+    title: expense.title,
+    amount: expense.amount.toNumber(),
+    category: expense.category,
+    expenseDate: expense.expenseDate.toISOString().slice(0, 10),
+    dateLabel: formatDate(expense.expenseDate),
+    notes: expense.notes ?? "",
+    payerId: expense.payerId,
+    payerName: expense.payer.displayName ?? expense.payer.email,
+  }));
 
   return (
     <AppShell userEmail={user.email ?? ""}>
@@ -296,7 +321,13 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
           <PhotoGallery tripId={trip.id} photos={photos.filter((photo) => photo.url)} />
         </TabsContent>
         <TabsContent value="budget">
-          <StubCard title="Budget" copy="Budget tracking arrives in Phase 5." />
+          <BudgetBoard
+            tripId={trip.id}
+            budgetAmount={trip.budgetAmount?.toNumber() ?? null}
+            currency={trip.currency}
+            members={budgetMembers}
+            expenses={expenses}
+          />
         </TabsContent>
         <TabsContent value="packing">
           <StubCard title="Packing" copy="Packing lists arrive in Phase 6." />

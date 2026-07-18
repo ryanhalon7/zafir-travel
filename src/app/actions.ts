@@ -1,6 +1,6 @@
 "use server";
 
-import { EventCategory, TripMemberRole, TripStatus } from "@prisma/client";
+import { EventCategory, ExpenseCategory, TripMemberRole, TripStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -79,6 +79,31 @@ const photoUploadSchema = z.object({
 const photoDeleteSchema = z.object({
   tripId: z.string().min(1),
   photoId: z.string().min(1),
+});
+
+const budgetSettingsSchema = z.object({
+  tripId: z.string().min(1),
+  budgetAmount: z.union([z.coerce.number().positive().max(9999999999), z.literal("")]),
+  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
+});
+
+const expenseSchema = z.object({
+  tripId: z.string().min(1),
+  payerId: z.string().uuid(),
+  title: z.string().trim().min(2).max(120),
+  amount: z.coerce.number().positive().max(9999999999),
+  category: z.nativeEnum(ExpenseCategory),
+  expenseDate: z.string().min(1),
+  notes: z.string().trim().max(500).optional(),
+});
+
+const expenseUpdateSchema = expenseSchema.extend({
+  expenseId: z.string().min(1),
+});
+
+const expenseDeleteSchema = z.object({
+  tripId: z.string().min(1),
+  expenseId: z.string().min(1),
 });
 
 function withMessage(path: string, message: string) {
@@ -710,4 +735,129 @@ export async function deleteTripPhotoAction(formData: FormData) {
   await prisma.tripPhoto.delete({ where: { id: photo.id } });
   revalidatePath(`/trips/${parsed.data.tripId}`);
   redirect(withMessage(`/trips/${parsed.data.tripId}`, "Photo deleted."));
+}
+
+export async function updateBudgetSettingsAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = budgetSettingsSchema.safeParse({
+    tripId: formData.get("tripId"),
+    budgetAmount: formData.get("budgetAmount") || "",
+    currency: formData.get("currency"),
+  });
+
+  if (!parsed.success) {
+    redirect(withMessage("/dashboard", "Budget settings could not be saved."));
+  }
+
+  await requireTripMembership(user.id, parsed.data.tripId);
+  await prisma.trip.update({
+    where: { id: parsed.data.tripId },
+    data: {
+      budgetAmount: parsed.data.budgetAmount === "" ? null : parsed.data.budgetAmount,
+      currency: parsed.data.currency,
+    },
+  });
+
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  redirect(withMessage(`/trips/${parsed.data.tripId}`, "Budget settings saved."));
+}
+
+async function requireExpensePayer(tripId: string, payerId: string) {
+  const payer = await prisma.tripMember.findUnique({
+    where: { tripId_userId: { tripId, userId: payerId } },
+    select: { id: true },
+  });
+
+  if (!payer) {
+    redirect(withMessage(`/trips/${tripId}`, "The selected payer is not a trip member."));
+  }
+}
+
+export async function createExpenseAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = expenseSchema.safeParse({
+    tripId: formData.get("tripId"),
+    payerId: formData.get("payerId"),
+    title: formData.get("title"),
+    amount: formData.get("amount"),
+    category: formData.get("category"),
+    expenseDate: formData.get("expenseDate"),
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    redirect(withMessage("/dashboard", "Expense details are incomplete."));
+  }
+
+  await requireTripMembership(user.id, parsed.data.tripId);
+  await requireExpensePayer(parsed.data.tripId, parsed.data.payerId);
+  await prisma.tripExpense.create({
+    data: {
+      tripId: parsed.data.tripId,
+      payerId: parsed.data.payerId,
+      title: parsed.data.title,
+      amount: parsed.data.amount,
+      category: parsed.data.category,
+      expenseDate: parseDateInput(parsed.data.expenseDate),
+      notes: parsed.data.notes || null,
+    },
+  });
+
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  redirect(withMessage(`/trips/${parsed.data.tripId}`, "Expense added."));
+}
+
+export async function updateExpenseAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = expenseUpdateSchema.safeParse({
+    tripId: formData.get("tripId"),
+    expenseId: formData.get("expenseId"),
+    payerId: formData.get("payerId"),
+    title: formData.get("title"),
+    amount: formData.get("amount"),
+    category: formData.get("category"),
+    expenseDate: formData.get("expenseDate"),
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    redirect(withMessage("/dashboard", "Expense could not be saved."));
+  }
+
+  await requireTripMembership(user.id, parsed.data.tripId);
+  await requireExpensePayer(parsed.data.tripId, parsed.data.payerId);
+  await prisma.tripExpense.updateMany({
+    where: { id: parsed.data.expenseId, tripId: parsed.data.tripId },
+    data: {
+      payerId: parsed.data.payerId,
+      title: parsed.data.title,
+      amount: parsed.data.amount,
+      category: parsed.data.category,
+      expenseDate: parseDateInput(parsed.data.expenseDate),
+      notes: parsed.data.notes || null,
+    },
+  });
+
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  redirect(withMessage(`/trips/${parsed.data.tripId}`, "Expense saved."));
+}
+
+export async function deleteExpenseAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = expenseDeleteSchema.safeParse({
+    tripId: formData.get("tripId"),
+    expenseId: formData.get("expenseId"),
+  });
+
+  if (!parsed.success) {
+    redirect(withMessage("/dashboard", "Expense could not be deleted."));
+  }
+
+  await requireTripMembership(user.id, parsed.data.tripId);
+  await prisma.tripExpense.deleteMany({
+    where: { id: parsed.data.expenseId, tripId: parsed.data.tripId },
+  });
+
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  redirect(withMessage(`/trips/${parsed.data.tripId}`, "Expense deleted."));
 }

@@ -45,6 +45,16 @@ Implemented:
 - Full-screen photo viewing and member-authorized deletion
 - Signed Supabase Storage URLs for private images
 
+## Phase 5 Shared Budget
+
+Implemented:
+
+- Trip budget target and three-letter currency setting
+- Categorized expense ledger with payer, date, and notes
+- Budget progress, remaining balance, and per-person totals
+- Equal-split settlement guidance for two travelers
+- Expense editing and deletion
+
 ## Local Setup
 
 1. Fill `.env.local` with your Supabase project values.
