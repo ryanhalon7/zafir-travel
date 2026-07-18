@@ -2,7 +2,8 @@ import { Download, FileImage, FileText, FolderLock, ShieldCheck, Trash2, Upload 
 
 import { deleteTripDocumentAction, uploadTripDocumentsAction } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Input } from "@/components/ui/input";

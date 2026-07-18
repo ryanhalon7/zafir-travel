@@ -54,17 +54,9 @@ begin
 
   drop policy if exists "Authenticated users can manage trip documents" on storage.objects;
   create policy "Authenticated users can manage trip documents"
-  on storage.objects for all
+  on storage.objects for select
   to authenticated
   using (
-    bucket_id = 'trip-documents'
-    and exists (
-      select 1 from public.trip_members
-      where "tripId" = (storage.foldername(name))[1]
-        and "userId" = auth.uid()
-    )
-  )
-  with check (
     bucket_id = 'trip-documents'
     and exists (
       select 1 from public.trip_members

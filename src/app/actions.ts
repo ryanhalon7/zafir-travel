@@ -204,6 +204,43 @@ function safeFileName(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9.]+/g, "-").replace(/^-|-$/g, "");
 }
 
+async function cleanupTripDocumentMetadata(
+  documents: Array<{
+    tripId: string;
+    uploaderId: string;
+    storagePath: string;
+    fileName: string;
+    mimeType: string;
+    fileSize: number;
+    category: DocumentCategory;
+    description: string | null;
+  }>,
+  supabase: ReturnType<typeof createClient>,
+) {
+  for (const document of documents) {
+    await prisma.tripDocument.deleteMany({
+      where: { storagePath: document.storagePath },
+    });
+
+    const { error } = await supabase.storage.from("trip-documents").remove([document.storagePath]);
+
+    if (error) {
+      await prisma.tripDocument.create({
+        data: {
+          tripId: document.tripId,
+          uploaderId: document.uploaderId,
+          storagePath: document.storagePath,
+          fileName: document.fileName,
+          mimeType: document.mimeType,
+          fileSize: document.fileSize,
+          category: document.category,
+          description: document.description,
+        },
+      });
+    }
+  }
+}
+
 async function requireTripMembership(userId: string, tripId: string) {
   const membership = await prisma.tripMember.findUnique({
     where: {
@@ -1070,7 +1107,16 @@ export async function uploadTripDocumentsAction(formData: FormData) {
   }
 
   const supabase = createClient();
-  const uploadedPaths: string[] = [];
+  const uploadedDocuments: Array<{
+    tripId: string;
+    uploaderId: string;
+    storagePath: string;
+    fileName: string;
+    mimeType: string;
+    fileSize: number;
+    category: DocumentCategory;
+    description: string | null;
+  }> = [];
 
   try {
     for (const file of files) {
@@ -1085,24 +1131,28 @@ export async function uploadTripDocumentsAction(formData: FormData) {
         throw new Error(error.message);
       }
 
-      uploadedPaths.push(storagePath);
-      await prisma.tripDocument.create({
-        data: {
-          tripId: parsed.data.tripId,
-          uploaderId: user.id,
-          storagePath,
-          fileName: file.name,
-          mimeType: file.type,
-          fileSize: file.size,
-          category: parsed.data.category,
-          description: parsed.data.description || null,
-        },
-      });
+      const document = {
+        tripId: parsed.data.tripId,
+        uploaderId: user.id,
+        storagePath,
+        fileName: file.name,
+        mimeType: file.type,
+        fileSize: file.size,
+        category: parsed.data.category,
+        description: parsed.data.description || null,
+      };
+
+      try {
+        await prisma.tripDocument.create({ data: document });
+        uploadedDocuments.push(document);
+      } catch (createError) {
+        uploadedDocuments.push(document);
+        throw createError;
+      }
     }
   } catch (error) {
-    if (uploadedPaths.length > 0) {
-      await supabase.storage.from("trip-documents").remove(uploadedPaths);
-      await prisma.tripDocument.deleteMany({ where: { storagePath: { in: uploadedPaths } } });
+    if (uploadedDocuments.length > 0) {
+      await cleanupTripDocumentMetadata(uploadedDocuments, supabase);
     }
 
     redirect(
@@ -1136,7 +1186,17 @@ export async function deleteTripDocumentAction(formData: FormData) {
   await requireTripMembership(user.id, parsed.data.tripId);
   const document = await prisma.tripDocument.findFirst({
     where: { id: parsed.data.documentId, tripId: parsed.data.tripId },
-    select: { id: true, storagePath: true },
+    select: {
+      id: true,
+      tripId: true,
+      uploaderId: true,
+      storagePath: true,
+      fileName: true,
+      mimeType: true,
+      fileSize: true,
+      category: true,
+      description: true,
+    },
   });
 
   if (!document) {
@@ -1144,13 +1204,27 @@ export async function deleteTripDocumentAction(formData: FormData) {
   }
 
   const supabase = createClient();
+  await prisma.tripDocument.delete({ where: { id: document.id } });
+
   const { error } = await supabase.storage.from("trip-documents").remove([document.storagePath]);
 
   if (error) {
+    await prisma.tripDocument.create({
+      data: {
+        tripId: document.tripId,
+        uploaderId: document.uploaderId,
+        storagePath: document.storagePath,
+        fileName: document.fileName,
+        mimeType: document.mimeType,
+        fileSize: document.fileSize,
+        category: document.category,
+        description: document.description,
+      },
+    });
+
     redirect(withMessage(`/trips/${parsed.data.tripId}`, error.message));
   }
 
-  await prisma.tripDocument.delete({ where: { id: document.id } });
   revalidatePath(`/trips/${parsed.data.tripId}`);
   redirect(withMessage(`/trips/${parsed.data.tripId}`, "Document deleted."));
 }
