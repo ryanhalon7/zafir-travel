@@ -176,6 +176,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
     title: expense.title,
     amount: expense.amount.toNumber(),
     category: expense.category,
+    isPaid: expense.isPaid,
     expenseDate: expense.expenseDate.toISOString().slice(0, 10),
     dateLabel: formatDate(expense.expenseDate),
     notes: expense.notes ?? "",

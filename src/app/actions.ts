@@ -126,6 +126,7 @@ const expenseSchema = z.object({
   title: z.string().trim().min(2).max(120),
   amount: z.coerce.number().positive().max(9999999999),
   category: z.enum(expenseCategories),
+  isPaid: z.enum(["true", "false"]).transform((value) => value === "true"),
   expenseDate: z.string().min(1),
   notes: z.string().trim().max(500).optional(),
 });
@@ -880,6 +881,7 @@ export async function createExpenseAction(formData: FormData) {
     title: formData.get("title"),
     amount: formData.get("amount"),
     category: formData.get("category"),
+    isPaid: formData.get("isPaid"),
     expenseDate: formData.get("expenseDate"),
     notes: formData.get("notes"),
   });
@@ -897,6 +899,7 @@ export async function createExpenseAction(formData: FormData) {
       title: parsed.data.title,
       amount: parsed.data.amount,
       category: parsed.data.category,
+      isPaid: parsed.data.isPaid,
       expenseDate: parseDateInput(parsed.data.expenseDate),
       notes: parsed.data.notes || null,
     },
@@ -915,6 +918,7 @@ export async function updateExpenseAction(formData: FormData) {
     title: formData.get("title"),
     amount: formData.get("amount"),
     category: formData.get("category"),
+    isPaid: formData.get("isPaid"),
     expenseDate: formData.get("expenseDate"),
     notes: formData.get("notes"),
   });
@@ -932,6 +936,7 @@ export async function updateExpenseAction(formData: FormData) {
       title: parsed.data.title,
       amount: parsed.data.amount,
       category: parsed.data.category,
+      isPaid: parsed.data.isPaid,
       expenseDate: parseDateInput(parsed.data.expenseDate),
       notes: parsed.data.notes || null,
     },
