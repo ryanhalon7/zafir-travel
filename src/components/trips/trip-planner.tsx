@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 
-type PlannerView = "list" | "calendar" | "map";
+type PlannerView = "list" | "week" | "month" | "map";
 type CalendarMode = "month" | "week";
 
 export function TripPlanner({ tripId, tripName, days }: { tripId: string; tripName: string; days: DayItem[] }) {
@@ -48,10 +48,10 @@ export function TripPlanner({ tripId, tripName, days }: { tripId: string; tripNa
 
   return (
     <div className="space-y-5">
-      {view !== "list" ? <div className="flex flex-wrap items-center justify-between gap-3">
+      {view === "month" || view === "map" ? <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-full bg-sand/70 p-1">
           <ViewButton active={false} onClick={() => setView("list")} icon={List}>Itinerary</ViewButton>
-          <ViewButton active={view === "calendar"} onClick={() => setView("calendar")} icon={CalendarDays}>Calendar</ViewButton>
+          <ViewButton active={view === "month"} onClick={() => setView("month")} icon={CalendarDays}>Calendar</ViewButton>
           <ViewButton active={view === "map"} onClick={() => setView("map")} icon={MapPinned}>Map</ViewButton>
         </div>
       </div> : null}
@@ -59,14 +59,19 @@ export function TripPlanner({ tripId, tripName, days }: { tripId: string; tripNa
       {view === "list" ? (
         <ItineraryBoard
           days={days}
+          activeDayId={selectedDayId}
           tripId={tripId}
           tripName={tripName}
           selectedEventId={selectedEventId}
+          onSelectDay={setSelectedDayId}
           onSelectEvent={selectEvent}
           onChangeView={setView}
         />
       ) : null}
-      {view === "calendar" ? (
+      {view === "week" ? (
+        <TripWeek days={days} onBack={() => setView("list")} onSelectEvent={showInItinerary} />
+      ) : null}
+      {view === "month" ? (
         <TripCalendar days={days} selectedEventId={selectedEventId} onSelectEvent={showInItinerary} />
       ) : null}
       {view === "map" ? (
@@ -89,6 +94,135 @@ function ViewButton({ active, onClick, icon: Icon, children }: { active: boolean
       <Icon className="h-4 w-4" />{children}
     </button>
   );
+}
+
+const WEEK_START_HOUR = 8;
+const WEEK_END_HOUR = 21;
+const WEEK_HOUR_HEIGHT = 48;
+
+function TripWeek({
+  days,
+  onBack,
+  onSelectEvent,
+}: {
+  days: DayItem[];
+  onBack: () => void;
+  onSelectEvent: (eventId: string, dayId: string) => void;
+}) {
+  const firstTripDate = days[0]?.date;
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekStart = useMemo(() => {
+    const date = firstTripDate ? new Date(`${firstTripDate}T00:00:00Z`) : new Date();
+    date.setUTCDate(date.getUTCDate() + weekOffset * 7);
+    return date;
+  }, [firstTripDate, weekOffset]);
+  const weekDates = useMemo(
+    () => Array.from({ length: 7 }, (_, index) => addUtcDays(weekStart, index)),
+    [weekStart],
+  );
+  const daysByDate = useMemo(() => new Map(days.map((day) => [day.date, day])), [days]);
+  const weekEnd = weekDates[6];
+  const title = `Week of ${weekStart.toLocaleDateString("en", { month: "short", day: "numeric", timeZone: "UTC" })}–${weekEnd.toLocaleDateString("en", {
+    month: weekStart.getUTCMonth() === weekEnd.getUTCMonth() ? undefined : "short",
+    day: "numeric",
+    timeZone: "UTC",
+  })}`;
+  const hours = Array.from({ length: WEEK_END_HOUR - WEEK_START_HOUR + 1 }, (_, index) => WEEK_START_HOUR + index);
+  const timelineHeight = (WEEK_END_HOUR - WEEK_START_HOUR) * WEEK_HOUR_HEIGHT;
+
+  return (
+    <section className="mx-auto max-w-6xl overflow-hidden bg-[#fbf8f2]">
+      <header className="flex min-h-12 items-center justify-between gap-3 border-b border-burgundy/10 px-1 pb-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <button type="button" onClick={onBack} className="inline-flex shrink-0 items-center gap-0.5 text-sm text-burgundy hover:text-terracotta">
+            <ChevronLeft className="h-4 w-4" /> Back
+          </button>
+          <h2 className="truncate font-heading text-2xl text-espresso">{title}</h2>
+        </div>
+        <div className="hidden gap-1 sm:flex">
+          <Button type="button" variant="ghost" size="icon" onClick={() => setWeekOffset((value) => value - 1)} aria-label="Previous week"><ChevronLeft className="h-4 w-4" /></Button>
+          <Button type="button" variant="ghost" size="icon" onClick={() => setWeekOffset((value) => value + 1)} aria-label="Next week"><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+      </header>
+
+      <div className="hide-scrollbar -mx-4 overflow-x-auto sm:mx-0">
+        <div className="min-w-[600px]">
+          <div className="grid grid-cols-[3.5rem_repeat(7,minmax(4.85rem,1fr))] border-b border-burgundy/10">
+            <div className="sticky left-0 z-20 border-r border-burgundy/10 bg-[#fbf8f2]" />
+            {weekDates.map((date) => {
+              const itineraryDay = daysByDate.get(isoDate(date));
+              const hasEvents = Boolean(itineraryDay?.events.length);
+              return (
+                <div key={isoDate(date)} className="border-r border-burgundy/10 px-2 py-3 text-center last:border-r-0">
+                  <span className="block text-[0.6rem] font-bold text-espresso/70">{date.toLocaleDateString("en", { weekday: "short", timeZone: "UTC" })}</span>
+                  <span className={cn("mx-auto mt-1 flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold", hasEvents && "bg-terracotta text-white")}>{date.getUTCDate()}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="relative grid grid-cols-[3.5rem_repeat(7,minmax(4.85rem,1fr))]" style={{ height: timelineHeight }}>
+            <div className="sticky left-0 z-20 border-r border-burgundy/10 bg-[#fbf8f2]">
+              {hours.slice(0, -1).map((hour, index) => <span key={hour} className="absolute right-2 -translate-y-1/2 text-[0.6rem] text-espresso/60" style={{ top: index * WEEK_HOUR_HEIGHT }}>{formatHour(hour)}</span>)}
+            </div>
+            {weekDates.map((date) => {
+              const day = daysByDate.get(isoDate(date));
+              return (
+                <div key={isoDate(date)} className="relative border-r border-burgundy/10 last:border-r-0">
+                  {hours.slice(0, -1).map((hour, index) => <span key={hour} className="absolute inset-x-0 border-t border-burgundy/[0.08]" style={{ top: index * WEEK_HOUR_HEIGHT }} />)}
+                  {day?.events.map((event, eventIndex) => {
+                    const position = weekEventPosition(event, eventIndex);
+                    return (
+                      <button
+                        key={event.id}
+                        type="button"
+                        onClick={() => onSelectEvent(event.id, day.id)}
+                        title={`${event.title}${event.locationName ? ` · ${event.locationName}` : ""}`}
+                        className="absolute inset-x-1 z-10 overflow-hidden rounded bg-[#ead9d1] px-1.5 py-1 text-left text-[0.58rem] font-semibold leading-tight text-[#9c4d32] shadow-sm transition hover:z-20 hover:bg-[#dfc5ba] focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
+                        style={{ top: position.top, minHeight: position.height }}
+                      >
+                        <span className="line-clamp-2 border-l-2 border-terracotta pl-1">{event.title}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      <div className="mt-1 flex items-center justify-between sm:hidden">
+        <Button type="button" variant="ghost" size="sm" onClick={() => setWeekOffset((value) => value - 1)}><ChevronLeft className="h-4 w-4" /> Previous</Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setWeekOffset((value) => value + 1)}>Next <ChevronRight className="h-4 w-4" /></Button>
+      </div>
+    </section>
+  );
+}
+
+function weekEventPosition(event: EventItem, fallbackIndex: number) {
+  const [startHour, startMinute] = event.startTime
+    ? event.startTime.split(":").map(Number)
+    : [WEEK_START_HOUR + fallbackIndex, 0];
+  const [endHour, endMinute] = event.endTime
+    ? event.endTime.split(":").map(Number)
+    : [startHour, startMinute + 45];
+  const start = Math.max(WEEK_START_HOUR * 60, Math.min(WEEK_END_HOUR * 60 - 20, startHour * 60 + startMinute));
+  const end = Math.max(start + 20, Math.min(WEEK_END_HOUR * 60, endHour * 60 + endMinute));
+  return {
+    top: ((start - WEEK_START_HOUR * 60) / 60) * WEEK_HOUR_HEIGHT + 2,
+    height: Math.max(24, ((end - start) / 60) * WEEK_HOUR_HEIGHT - 4),
+  };
+}
+
+function formatHour(hour: number) {
+  if (hour === 12) return "12 PM";
+  return hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
+}
+
+function addUtcDays(date: Date, amount: number) {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + amount);
+  return next;
 }
 
 function TripCalendar({ days, selectedEventId, onSelectEvent }: { days: DayItem[]; selectedEventId: string | null; onSelectEvent: (eventId: string, dayId: string) => void }) {

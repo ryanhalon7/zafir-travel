@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
   CalendarDays,
+  Columns3,
   Clock3,
   GripVertical,
   Map,
@@ -50,9 +51,11 @@ type ItineraryBoardProps = {
   tripId: string;
   tripName: string;
   days: DayItem[];
+  activeDayId?: string;
   selectedEventId?: string | null;
+  onSelectDay: (dayId: string) => void;
   onSelectEvent?: (eventId: string, dayId: string) => void;
-  onChangeView: (view: "calendar" | "map") => void;
+  onChangeView: (view: "week" | "month" | "map") => void;
 };
 
 const categories = [
@@ -117,7 +120,9 @@ export function ItineraryBoard({
   tripId,
   tripName,
   days,
+  activeDayId,
   selectedEventId,
+  onSelectDay,
   onSelectEvent,
   onChangeView,
 }: ItineraryBoardProps) {
@@ -130,8 +135,11 @@ export function ItineraryBoard({
 
   useEffect(() => {
     setOrderedDays(days);
-    if (!days.some((day) => day.id === selectedDayId)) setSelectedDayId(days[0]?.id ?? "");
-  }, [days, selectedDayId]);
+    setSelectedDayId((current) => {
+      if (activeDayId && days.some((day) => day.id === activeDayId)) return activeDayId;
+      return days.some((day) => day.id === current) ? current : (days[0]?.id ?? "");
+    });
+  }, [activeDayId, days]);
 
   const selectedDay = orderedDays.find((day) => day.id === selectedDayId) ?? orderedDays[0];
   const dateRange = orderedDays.length
@@ -161,8 +169,8 @@ export function ItineraryBoard({
           </p>
         </div>
         <div className="flex gap-2" aria-label="Itinerary views">
-          <ViewIcon active label="Day view"><CalendarDays className="h-4 w-4" /></ViewIcon>
-          <ViewIcon label="Week and month views" onClick={() => onChangeView("calendar")}><CalendarDays className="h-4 w-4" /></ViewIcon>
+          <ViewIcon label="Week view" onClick={() => onChangeView("week")}><Columns3 className="h-4 w-4" /></ViewIcon>
+          <ViewIcon label="Month view" onClick={() => onChangeView("month")}><CalendarDays className="h-4 w-4" /></ViewIcon>
           <ViewIcon label="Map view" onClick={() => onChangeView("map")}><Map className="h-4 w-4" /></ViewIcon>
         </div>
       </header>
@@ -182,7 +190,10 @@ export function ItineraryBoard({
                 <button
                   key={day.id}
                   type="button"
-                  onClick={() => setSelectedDayId(day.id)}
+                  onClick={() => {
+                    setSelectedDayId(day.id);
+                    onSelectDay(day.id);
+                  }}
                   className={cn(
                     "relative min-w-[4.4rem] px-4 py-4 text-center text-espresso transition hover:bg-terracotta/5",
                     active && "text-terracotta",
