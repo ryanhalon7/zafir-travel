@@ -369,6 +369,7 @@ function TripMap({ days, destination, selectedDayId, selectedEventId, onSelectDa
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
+  const [mapReady, setMapReady] = useState(false);
   const selectedDay = days.find((day) => day.id === selectedDayId) ?? days[0];
   const mappedEvents = useMemo(() => selectedDay?.events.filter(hasCoordinates) ?? [], [selectedDay]);
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -376,14 +377,24 @@ function TripMap({ days, destination, selectedDayId, selectedEventId, onSelectDa
   useEffect(() => {
     if (!containerRef.current || !token || mapRef.current) return;
     mapboxgl.accessToken = token;
-    mapRef.current = new mapboxgl.Map({ container: containerRef.current, style: "mapbox://styles/mapbox/light-v11", center: [0, 20], zoom: 1.5, attributionControl: false });
-    mapRef.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
-    return () => { mapRef.current?.remove(); mapRef.current = null; };
+    const map = new mapboxgl.Map({ container: containerRef.current, style: "mapbox://styles/mapbox/light-v11", center: [0, 20], zoom: 1.5, attributionControl: false });
+    mapRef.current = map;
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+    const markReady = () => { map.resize(); setMapReady(true); };
+    map.once("load", markReady);
+    const resizeObserver = new ResizeObserver(() => map.resize());
+    resizeObserver.observe(containerRef.current);
+    return () => {
+      resizeObserver.disconnect();
+      map.remove();
+      mapRef.current = null;
+      setMapReady(false);
+    };
   }, [token]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selectedDay) return;
+    if (!map || !mapReady || !selectedDay) return;
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = mappedEvents.map((event) => {
       const element = document.createElement("button");
@@ -398,16 +409,16 @@ function TripMap({ days, destination, selectedDayId, selectedEventId, onSelectDa
     if (mappedEvents.length) {
       const bounds = new mapboxgl.LngLatBounds();
       mappedEvents.forEach((event) => bounds.extend([event.longitude, event.latitude]));
-      map.fitBounds(bounds, { padding: { top: 90, right: 55, bottom: 245, left: 55 }, maxZoom: 13, duration: 600 });
+      map.fitBounds(bounds, { padding: { top: 85, right: 55, bottom: 55, left: 55 }, maxZoom: 13, duration: 600 });
     }
-  }, [mappedEvents, onSelectEvent, selectedDay, selectedEventId]);
+  }, [mapReady, mappedEvents, onSelectEvent, selectedDay, selectedEventId]);
 
   if (!days.length) return <div className="rounded-2xl border border-dashed border-burgundy/15 p-8 text-center"><h2 className="font-heading text-2xl">Dates needed</h2><p className="mt-2 text-sm text-espresso/60">Add trip dates before using the map.</p></div>;
 
   return (
-    <section className="relative -mx-4 -mt-8 min-h-[calc(100dvh-4.5rem)] overflow-hidden bg-[#aadbc0] sm:-mt-12 md:mx-0 md:mt-0 md:min-h-[720px] md:rounded-2xl md:shadow-luxe">
-      <div ref={containerRef} className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(160deg,#d2efdc,#82c9aa)] bg-[size:56px_56px,56px_56px,100%_100%]">
-        {!token ? <div className="flex h-full items-center justify-center px-8 pb-52 text-center text-sm font-medium text-espresso/65">Add NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN to enable the interactive map.</div> : null}
+    <section className="relative -mx-4 -mt-8 min-h-[calc(100dvh-4.5rem)] overflow-hidden bg-[#aadbc0] sm:-mt-12 md:mx-0 md:mt-0 md:min-h-0 md:rounded-2xl md:shadow-luxe">
+      <div ref={containerRef} className="relative h-[58dvh] min-h-[400px] w-full bg-[linear-gradient(rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(160deg,#d2efdc,#82c9aa)] bg-[size:56px_56px,56px_56px,100%_100%] md:h-[520px]">
+        {!token ? <div className="flex h-full items-center justify-center px-8 text-center text-sm font-medium text-espresso/65">Add NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN to enable the interactive map.</div> : null}
       </div>
 
       <button type="button" onClick={onBack} aria-label="Back to itinerary" className="absolute left-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-espresso shadow-soft backdrop-blur"><ChevronLeft className="h-5 w-5" /></button>
@@ -415,7 +426,7 @@ function TripMap({ days, destination, selectedDayId, selectedEventId, onSelectDa
         <MapPin className="h-3.5 w-3.5 shrink-0 fill-pink-500 text-pink-500" /><span className="truncate">{destination}</span>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 z-20 rounded-t-3xl bg-[#fffdf9] px-4 pb-5 pt-2 shadow-[0_-12px_35px_rgba(51,37,31,.14)]">
+      <div className="relative z-20 -mt-6 min-h-[calc(42dvh-3rem)] rounded-t-3xl bg-[#fffdf9] px-4 pb-5 pt-2 shadow-[0_-12px_35px_rgba(51,37,31,.14)] md:min-h-[280px]">
         <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-[#d8c6ad]" />
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-heading text-xl text-espresso">Day {selectedDay.dayNumber} · {selectedDay.events.length} {selectedDay.events.length === 1 ? "location" : "locations"}</h2>

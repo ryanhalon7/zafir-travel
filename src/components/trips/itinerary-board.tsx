@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import {
   CalendarDays,
   Columns3,
@@ -130,8 +131,13 @@ export function ItineraryBoard({
   const [selectedDayId, setSelectedDayId] = useState(days[0]?.id ?? "");
   const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const addPanelRef = useRef<HTMLDivElement>(null);
   const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setOrderedDays(days);
@@ -280,9 +286,12 @@ export function ItineraryBoard({
             </div>
           ) : null}
 
-          <button type="button" onClick={openAddEvent} aria-label="Add event" className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#cb6d45] text-white shadow-luxe transition hover:scale-105 hover:bg-terracotta md:absolute md:-right-2 md:bottom-0">
-            <Plus className="h-5 w-5" strokeWidth={3} />
-          </button>
+          {mounted ? createPortal(
+            <button type="button" onClick={openAddEvent} aria-label="Add event" className="fixed bottom-24 right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-[#cb6d45] text-white shadow-luxe transition hover:scale-105 hover:bg-terracotta md:bottom-8 md:right-8">
+              <Plus className="h-5 w-5" strokeWidth={3} />
+            </button>,
+            document.body,
+          ) : null}
         </>
       )}
     </section>
