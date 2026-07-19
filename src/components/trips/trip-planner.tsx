@@ -48,10 +48,10 @@ export function TripPlanner({ tripId, tripName, days }: { tripId: string; tripNa
 
   return (
     <div className="space-y-5">
-      {view === "month" || view === "map" ? <div className="flex flex-wrap items-center justify-between gap-3">
+      {view === "map" ? <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-full bg-sand/70 p-1">
           <ViewButton active={false} onClick={() => setView("list")} icon={List}>Itinerary</ViewButton>
-          <ViewButton active={view === "month"} onClick={() => setView("month")} icon={CalendarDays}>Calendar</ViewButton>
+          <ViewButton active={false} onClick={() => setView("month")} icon={CalendarDays}>Calendar</ViewButton>
           <ViewButton active={view === "map"} onClick={() => setView("map")} icon={MapPinned}>Map</ViewButton>
         </div>
       </div> : null}
@@ -72,7 +72,7 @@ export function TripPlanner({ tripId, tripName, days }: { tripId: string; tripNa
         <TripWeek days={days} onBack={() => setView("list")} onSelectEvent={showInItinerary} />
       ) : null}
       {view === "month" ? (
-        <TripCalendar days={days} selectedEventId={selectedEventId} onSelectEvent={showInItinerary} />
+        <TripMonth days={days} tripName={tripName} onBack={() => setView("list")} onSelectEvent={showInItinerary} />
       ) : null}
       {view === "map" ? (
         <TripMap
@@ -225,7 +225,116 @@ function addUtcDays(date: Date, amount: number) {
   return next;
 }
 
-function TripCalendar({ days, selectedEventId, onSelectEvent }: { days: DayItem[]; selectedEventId: string | null; onSelectEvent: (eventId: string, dayId: string) => void }) {
+function TripMonth({ days, tripName, onBack, onSelectEvent }: { days: DayItem[]; tripName: string; onBack: () => void; onSelectEvent: (eventId: string, dayId: string) => void }) {
+  const firstDate = days[0]?.date;
+  const [cursor, setCursor] = useState(() => firstDate ? new Date(`${firstDate}T00:00:00Z`) : new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const daysByDate = useMemo(() => new Map(days.map((day) => [day.date, day])), [days]);
+  const cells = useMemo(() => monthCells(cursor), [cursor]);
+  const monthEvents = useMemo(() => days
+    .filter((day) => {
+      const date = new Date(`${day.date}T00:00:00Z`);
+      return date.getUTCFullYear() === cursor.getUTCFullYear()
+        && date.getUTCMonth() === cursor.getUTCMonth()
+        && (!selectedDate || day.date === selectedDate);
+    })
+    .flatMap((day) => day.events.map((event) => ({ event, day }))), [cursor, days, selectedDate]);
+  const firstDay = days[0];
+  const lastDay = days[days.length - 1];
+
+  function moveMonth(amount: number) {
+    setCursor((current) => new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + amount, 1)));
+    setSelectedDate(null);
+  }
+
+  return (
+    <section className="mx-auto max-w-3xl">
+      <header className="flex min-h-12 items-center justify-between gap-3 border-b border-burgundy/10 pb-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <button type="button" onClick={onBack} className="inline-flex shrink-0 items-center gap-0.5 text-sm text-burgundy hover:text-terracotta"><ChevronLeft className="h-4 w-4" /> Back</button>
+          <h2 className="font-heading text-2xl text-espresso">{cursor.toLocaleDateString("en", { month: "long", year: "numeric", timeZone: "UTC" })}</h2>
+        </div>
+        <div className="flex gap-1">
+          <Button type="button" variant="ghost" size="icon" onClick={() => moveMonth(-1)} aria-label="Previous month"><ChevronLeft className="h-4 w-4" /></Button>
+          <Button type="button" variant="ghost" size="icon" onClick={() => moveMonth(1)} aria-label="Next month"><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+      </header>
+
+      <div className="mt-4">
+        <div className="grid grid-cols-7 py-2">
+          {(["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const).map((label) => <div key={label} className="text-center text-[0.65rem] font-bold text-espresso">{label}</div>)}
+        </div>
+        <div className="grid grid-cols-7 gap-y-1">
+          {cells.map((date) => {
+            const iso = isoDate(date);
+            const itineraryDay = daysByDate.get(iso);
+            const outside = date.getUTCMonth() !== cursor.getUTCMonth();
+            const selected = selectedDate === iso;
+            return (
+              <button
+                key={iso}
+                type="button"
+                disabled={outside}
+                onClick={() => setSelectedDate((current) => current === iso ? null : iso)}
+                className={cn(
+                  "mx-0.5 flex h-12 flex-col items-center justify-center rounded-xl text-sm text-espresso/75 transition sm:h-14",
+                  outside && "invisible",
+                  itineraryDay && "bg-[#ead9d1] text-terracotta hover:bg-[#dfc5ba]",
+                  selected && "bg-terracotta font-bold text-white hover:bg-terracotta",
+                )}
+                aria-pressed={selected}
+              >
+                <span>{date.getUTCDate()}</span>
+                {itineraryDay?.events.length ? <span className="mt-1 flex gap-0.5" aria-label={`${itineraryDay.events.length} events`}>{Array.from({ length: Math.min(3, itineraryDay.events.length) }, (_, index) => <span key={index} className="h-1 w-1 rounded-full bg-current" />)}</span> : null}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {firstDay && lastDay ? <div className="mt-5 flex items-center justify-between rounded-xl bg-[#ead9d1] px-4 py-3 text-xs text-terracotta">
+        <span className="flex min-w-0 items-center gap-2 font-semibold"><span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-terracotta" /><span className="truncate">{tripName}</span></span>
+        <span className="ml-3 shrink-0 text-espresso/55">{formatDateRange(firstDay.date, lastDay.date)}</span>
+      </div> : null}
+
+      <div className="mt-6">
+        <h3 className="font-heading text-2xl text-espresso">{selectedDate ? `Events on ${formatMonthDay(selectedDate)}` : `Events in ${cursor.toLocaleDateString("en", { month: "long", timeZone: "UTC" })}`}</h3>
+        <div className="mt-3 space-y-2">
+          {monthEvents.length ? monthEvents.map(({ event, day }) => <button key={event.id} type="button" onClick={() => onSelectEvent(event.id, day.id)} className="flex w-full items-center gap-3 rounded-2xl border border-burgundy/10 bg-white/75 p-3 text-left shadow-soft transition hover:-translate-y-0.5 hover:shadow-luxe">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cream text-base">{eventEmoji(event.category)}</span>
+            <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-espresso">{event.title}</span><span className="mt-0.5 block text-[0.65rem] text-terracotta/75">{formatMonthDay(day.date)} · {formatEventTime(event.startTime)}</span></span>
+          </button>) : <div className="rounded-2xl border border-dashed border-burgundy/15 px-5 py-8 text-center text-sm text-espresso/55">No events for this selection.</div>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function monthCells(cursor: Date) {
+  const start = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), 1));
+  start.setUTCDate(start.getUTCDate() - start.getUTCDay());
+  return Array.from({ length: 42 }, (_, index) => addUtcDays(start, index));
+}
+
+function formatMonthDay(value: string) {
+  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en", { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+function formatDateRange(start: string, end: string) {
+  return `${formatMonthDay(start)}–${new Date(`${end}T00:00:00Z`).getUTCDate()}`;
+}
+
+function formatEventTime(value: string) {
+  if (!value) return "Anytime";
+  const [hourValue, minute] = value.split(":").map(Number);
+  return `${hourValue % 12 || 12}:${String(minute).padStart(2, "0")} ${hourValue >= 12 ? "PM" : "AM"}`;
+}
+
+function eventEmoji(category: string) {
+  return ({ FLIGHT: "✈️", LODGING: "🏨", ACTIVITY: "🎭", FOOD: "🍽️", TRANSPORT: "🚕" } as Record<string, string>)[category] ?? "📌";
+}
+
+export function TripCalendar({ days, selectedEventId, onSelectEvent }: { days: DayItem[]; selectedEventId: string | null; onSelectEvent: (eventId: string, dayId: string) => void }) {
   const firstDate = days[0]?.date ? new Date(`${days[0].date}T00:00:00Z`) : new Date();
   const [mode, setMode] = useState<CalendarMode>("month");
   const [cursor, setCursor] = useState(firstDate);
