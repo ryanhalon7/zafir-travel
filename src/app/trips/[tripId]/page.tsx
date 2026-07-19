@@ -37,6 +37,7 @@ type TripPageProps = {
   };
   searchParams?: {
     message?: string;
+    tab?: string;
   };
 };
 
@@ -121,6 +122,8 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   if (!trip) {
     notFound();
   }
+
+  const isItinerary = !searchParams?.tab || searchParams.tab === "itinerary";
 
   const days = trip.days.map((day) => ({
     id: day.id,
@@ -231,17 +234,17 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   );
 
   return (
-    <AppShell userEmail={user.email ?? ""} tripId={trip.id}>
-      <div className="mb-6">
+    <AppShell userEmail={user.email ?? ""} tripId={trip.id} hideMobileHeader={isItinerary}>
+      {!isItinerary ? <div className="mb-6">
         <Button asChild variant="ghost">
           <Link href="/dashboard">
             <ArrowLeft className="h-4 w-4" />
             Back to trips
           </Link>
         </Button>
-      </div>
+      </div> : null}
 
-      <section
+      {!isItinerary ? <section
         className="relative overflow-hidden rounded-lg bg-cover bg-center px-6 py-14 text-ivory shadow-luxe sm:px-9 lg:py-20"
         style={{
           backgroundImage: `linear-gradient(90deg, rgba(51,37,31,0.82), rgba(95,22,38,0.34)), url('${
@@ -270,7 +273,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
             </span>
           </div>
         </div>
-      </section>
+      </section> : null}
 
       {searchParams?.message ? (
         <div className="mt-5 rounded-lg bg-ivory/80 px-5 py-4 text-sm font-semibold text-espresso shadow-soft">
@@ -279,18 +282,18 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
       ) : null}
 
       <MutationFeedback message={searchParams?.message}>
-      <TripSectionTabs>
-        <TabsList>
+      <TripSectionTabs compact={isItinerary}>
+        {!isItinerary ? <TabsList>
           <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="photos">Photos</TabsTrigger>
           <TabsTrigger value="budget">Budget</TabsTrigger>
           <TabsTrigger value="packing">Packing</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
-        </TabsList>
+        </TabsList> : null}
 
-        <TabsContent value="itinerary">
-          <TripPlanner days={days} tripId={trip.id} />
+        <TabsContent value="itinerary" className={isItinerary ? "mt-0" : undefined}>
+          <TripPlanner days={days} tripId={trip.id} tripName={trip.name} />
         </TabsContent>
 
         <TabsContent value="details">

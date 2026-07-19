@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 type PlannerView = "list" | "calendar" | "map";
 type CalendarMode = "month" | "week";
 
-export function TripPlanner({ tripId, days }: { tripId: string; days: DayItem[] }) {
+export function TripPlanner({ tripId, tripName, days }: { tripId: string; tripName: string; days: DayItem[] }) {
   const [view, setView] = useState<PlannerView>("list");
   const [selectedDayId, setSelectedDayId] = useState(days[0]?.id ?? "");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -48,20 +48,22 @@ export function TripPlanner({ tripId, days }: { tripId: string; days: DayItem[] 
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {view !== "list" ? <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-full bg-sand/70 p-1">
-          <ViewButton active={view === "list"} onClick={() => setView("list")} icon={List}>Itinerary</ViewButton>
+          <ViewButton active={false} onClick={() => setView("list")} icon={List}>Itinerary</ViewButton>
           <ViewButton active={view === "calendar"} onClick={() => setView("calendar")} icon={CalendarDays}>Calendar</ViewButton>
           <ViewButton active={view === "map"} onClick={() => setView("map")} icon={MapPinned}>Map</ViewButton>
         </div>
-      </div>
+      </div> : null}
 
       {view === "list" ? (
         <ItineraryBoard
           days={days}
           tripId={tripId}
+          tripName={tripName}
           selectedEventId={selectedEventId}
           onSelectEvent={selectEvent}
+          onChangeView={setView}
         />
       ) : null}
       {view === "calendar" ? (

@@ -6,7 +6,7 @@ import {
   Camera,
   CircleDollarSign,
   Ellipsis,
-  Map,
+  ClipboardList,
   Plane,
   type LucideIcon,
 } from "lucide-react";
@@ -25,7 +25,7 @@ type NavItem = {
 
 const navigationItems: NavItem[] = [
   { label: "Trips", icon: Plane },
-  { label: "Itinerary", icon: Map, tab: "itinerary" },
+  { label: "Itinerary", icon: ClipboardList, tab: "itinerary" },
   { label: "Photos", icon: Camera, tab: "photos" },
   { label: "Budget", icon: CircleDollarSign, tab: "budget" },
   { label: "More", icon: Ellipsis, tab: "details" },

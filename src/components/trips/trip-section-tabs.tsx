@@ -20,7 +20,7 @@ function isSectionName(value: string | null): value is SectionName {
   return sectionNames.includes(value as SectionName);
 }
 
-export function TripSectionTabs({ children }: { children: React.ReactNode }) {
+export function TripSectionTabs({ children, compact = false }: { children: React.ReactNode; compact?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -42,7 +42,7 @@ export function TripSectionTabs({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <Tabs value={section} onValueChange={selectSection} className="mt-8">
+    <Tabs value={section} onValueChange={selectSection} className={compact ? "mt-0" : "mt-8"}>
       {children}
     </Tabs>
   );

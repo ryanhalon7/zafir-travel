@@ -69,7 +69,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   ).slice(0, 2);
 
   return (
-    <AppShell userEmail={user.email ?? ""} hideMobileHeader>
+    <AppShell
+      userEmail={user.email ?? ""}
+      tripId={trips[0]?.id}
+      hideMobileHeader
+    >
       <TripsDashboard
         trips={dashboardTrips}
         travelerNames={travelerNames}
