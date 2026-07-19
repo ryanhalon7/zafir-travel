@@ -3,7 +3,7 @@
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import mapboxgl, { type Map as MapboxMap, type Marker } from "mapbox-gl";
-import { CalendarDays, ChevronLeft, ChevronRight, List, MapPinned } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, MapPinned } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ItineraryBoard, type DayItem, type EventItem } from "@/components/trips/itinerary-board";
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 type PlannerView = "list" | "week" | "month" | "map";
 type CalendarMode = "month" | "week";
 
-export function TripPlanner({ tripId, tripName, days }: { tripId: string; tripName: string; days: DayItem[] }) {
+export function TripPlanner({ tripId, tripName, destination, days }: { tripId: string; tripName: string; destination: string; days: DayItem[] }) {
   const [view, setView] = useState<PlannerView>("list");
   const [selectedDayId, setSelectedDayId] = useState(days[0]?.id ?? "");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -48,14 +48,6 @@ export function TripPlanner({ tripId, tripName, days }: { tripId: string; tripNa
 
   return (
     <div className="space-y-5">
-      {view === "map" ? <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-full bg-sand/70 p-1">
-          <ViewButton active={false} onClick={() => setView("list")} icon={List}>Itinerary</ViewButton>
-          <ViewButton active={false} onClick={() => setView("month")} icon={CalendarDays}>Calendar</ViewButton>
-          <ViewButton active={view === "map"} onClick={() => setView("map")} icon={MapPinned}>Map</ViewButton>
-        </div>
-      </div> : null}
-
       {view === "list" ? (
         <ItineraryBoard
           days={days}
@@ -77,22 +69,15 @@ export function TripPlanner({ tripId, tripName, days }: { tripId: string; tripNa
       {view === "map" ? (
         <TripMap
           days={days}
+          destination={destination}
           selectedDayId={selectedDayId}
           selectedEventId={selectedEventId}
           onSelectDay={setSelectedDayId}
           onSelectEvent={selectEvent}
-          onShowInItinerary={showInItinerary}
+          onBack={() => setView("list")}
         />
       ) : null}
     </div>
-  );
-}
-
-function ViewButton({ active, onClick, icon: Icon, children }: { active: boolean; onClick: () => void; icon: typeof List; children: React.ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} className={cn("inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition", active && "bg-ivory text-burgundy shadow-soft")}>
-      <Icon className="h-4 w-4" />{children}
-    </button>
   );
 }
 
@@ -380,7 +365,77 @@ export function TripCalendar({ days, selectedEventId, onSelectEvent }: { days: D
   );
 }
 
-function TripMap({ days, selectedDayId, selectedEventId, onSelectDay, onSelectEvent, onShowInItinerary }: { days: DayItem[]; selectedDayId: string; selectedEventId: string | null; onSelectDay: (id: string) => void; onSelectEvent: (eventId: string, dayId: string) => void; onShowInItinerary: (eventId: string, dayId: string) => void }) {
+function TripMap({ days, destination, selectedDayId, selectedEventId, onSelectDay, onSelectEvent, onBack }: { days: DayItem[]; destination: string; selectedDayId: string; selectedEventId: string | null; onSelectDay: (id: string) => void; onSelectEvent: (eventId: string, dayId: string) => void; onBack: () => void }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<MapboxMap | null>(null);
+  const markersRef = useRef<Marker[]>([]);
+  const selectedDay = days.find((day) => day.id === selectedDayId) ?? days[0];
+  const mappedEvents = useMemo(() => selectedDay?.events.filter(hasCoordinates) ?? [], [selectedDay]);
+  const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+
+  useEffect(() => {
+    if (!containerRef.current || !token || mapRef.current) return;
+    mapboxgl.accessToken = token;
+    mapRef.current = new mapboxgl.Map({ container: containerRef.current, style: "mapbox://styles/mapbox/light-v11", center: [0, 20], zoom: 1.5, attributionControl: false });
+    mapRef.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+    return () => { mapRef.current?.remove(); mapRef.current = null; };
+  }, [token]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !selectedDay) return;
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = mappedEvents.map((event) => {
+      const element = document.createElement("button");
+      element.className = "flex h-10 w-10 items-center justify-center rounded-2xl border-2 border-white bg-[#cb6d45] text-base shadow-lg transition";
+      if (selectedEventId === event.id) element.classList.add("scale-125", "ring-2", "ring-burgundy/30");
+      element.type = "button";
+      element.title = event.title;
+      element.textContent = eventEmoji(event.category);
+      element.addEventListener("click", () => onSelectEvent(event.id, selectedDay.id));
+      return new mapboxgl.Marker({ element, anchor: "bottom" }).setLngLat([event.longitude, event.latitude]).addTo(map);
+    });
+    if (mappedEvents.length) {
+      const bounds = new mapboxgl.LngLatBounds();
+      mappedEvents.forEach((event) => bounds.extend([event.longitude, event.latitude]));
+      map.fitBounds(bounds, { padding: { top: 90, right: 55, bottom: 245, left: 55 }, maxZoom: 13, duration: 600 });
+    }
+  }, [mappedEvents, onSelectEvent, selectedDay, selectedEventId]);
+
+  if (!days.length) return <div className="rounded-2xl border border-dashed border-burgundy/15 p-8 text-center"><h2 className="font-heading text-2xl">Dates needed</h2><p className="mt-2 text-sm text-espresso/60">Add trip dates before using the map.</p></div>;
+
+  return (
+    <section className="relative -mx-4 -mt-8 min-h-[calc(100dvh-4.5rem)] overflow-hidden bg-[#aadbc0] sm:-mt-12 md:mx-0 md:mt-0 md:min-h-[720px] md:rounded-2xl md:shadow-luxe">
+      <div ref={containerRef} className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(160deg,#d2efdc,#82c9aa)] bg-[size:56px_56px,56px_56px,100%_100%]">
+        {!token ? <div className="flex h-full items-center justify-center px-8 pb-52 text-center text-sm font-medium text-espresso/65">Add NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN to enable the interactive map.</div> : null}
+      </div>
+
+      <button type="button" onClick={onBack} aria-label="Back to itinerary" className="absolute left-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-espresso shadow-soft backdrop-blur"><ChevronLeft className="h-5 w-5" /></button>
+      <div className="absolute left-1/2 top-3 z-20 flex max-w-[65%] -translate-x-1/2 items-center gap-1.5 rounded-full bg-white/90 px-4 py-2 text-xs font-bold text-espresso shadow-soft backdrop-blur">
+        <MapPin className="h-3.5 w-3.5 shrink-0 fill-pink-500 text-pink-500" /><span className="truncate">{destination}</span>
+      </div>
+
+      <div className="absolute inset-x-0 bottom-0 z-20 rounded-t-3xl bg-[#fffdf9] px-4 pb-5 pt-2 shadow-[0_-12px_35px_rgba(51,37,31,.14)]">
+        <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-[#d8c6ad]" />
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-heading text-xl text-espresso">Day {selectedDay.dayNumber} · {selectedDay.events.length} {selectedDay.events.length === 1 ? "location" : "locations"}</h2>
+          {days.length > 1 ? <NativeSelect aria-label="Map day" className="h-8 w-24 rounded-lg py-1 text-xs" value={selectedDay.id} onChange={(event) => onSelectDay(event.target.value)}>{days.map((day) => <option key={day.id} value={day.id}>Day {day.dayNumber}</option>)}</NativeSelect> : null}
+        </div>
+        <div className="mt-3 max-h-[13.5rem] overflow-y-auto">
+          {selectedDay.events.length ? selectedDay.events.map((event) => (
+            <button key={event.id} type="button" onClick={() => onSelectEvent(event.id, selectedDay.id)} className={cn("flex w-full items-center gap-3 border-b border-burgundy/10 py-2 text-left transition last:border-0", selectedEventId === event.id && "bg-terracotta/5") }>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cream text-sm">{eventEmoji(event.category)}</span>
+              <span className="min-w-0 flex-1"><span className="block truncate text-xs font-bold text-espresso">{event.title}</span><span className="mt-0.5 block truncate text-[0.6rem] text-terracotta/70">{formatEventTime(event.startTime)} · {event.locationName || "Location pending"}</span></span>
+              <MapPin className={cn("h-3.5 w-3.5 shrink-0 text-pink-500", hasCoordinates(event) && "fill-pink-500", !hasCoordinates(event) && "opacity-25")} />
+            </button>
+          )) : <p className="py-8 text-center text-sm text-espresso/55">No locations planned for this day.</p>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function LegacyTripMap({ days, selectedDayId, selectedEventId, onSelectDay, onSelectEvent, onShowInItinerary }: { days: DayItem[]; selectedDayId: string; selectedEventId: string | null; onSelectDay: (id: string) => void; onSelectEvent: (eventId: string, dayId: string) => void; onShowInItinerary: (eventId: string, dayId: string) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const markersRef = useRef<Marker[]>([]);

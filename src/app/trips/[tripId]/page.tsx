@@ -293,7 +293,12 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
         </TabsList> : null}
 
         <TabsContent value="itinerary" className={isItinerary ? "mt-0" : undefined}>
-          <TripPlanner days={days} tripId={trip.id} tripName={trip.name} />
+          <TripPlanner
+            days={days}
+            tripId={trip.id}
+            tripName={trip.name}
+            destination={trip.destinations.join(", ") || "Trip map"}
+          />
         </TabsContent>
 
         <TabsContent value="details">
