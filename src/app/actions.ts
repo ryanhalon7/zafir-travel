@@ -410,14 +410,14 @@ export async function createTripSpaceAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect(withMessage("/dashboard", "Add a trip name, destination, and dates first."));
+    redirect(withMessage("/trips/new", "Add a trip name, destination, and dates first."));
   }
 
   const startDate = parseDateInput(parsed.data.startDate);
   const endDate = parseDateInput(parsed.data.endDate);
 
   if (endDate < startDate) {
-    redirect(withMessage("/dashboard", "End date must be after the start date."));
+    redirect(withMessage("/trips/new", "End date must be after the start date."));
   }
 
   const inviteCode = await createInviteCode();
@@ -440,7 +440,19 @@ export async function createTripSpaceAction(formData: FormData) {
     },
   });
 
-  const cover = await uploadCoverPhoto(formData.get("coverPhoto"), trip.id, user.id);
+  let cover: Awaited<ReturnType<typeof uploadCoverPhoto>>;
+
+  try {
+    cover = await uploadCoverPhoto(formData.get("coverPhoto"), trip.id, user.id);
+  } catch (error) {
+    await prisma.trip.delete({ where: { id: trip.id } });
+    redirect(
+      withMessage(
+        "/trips/new",
+        error instanceof Error ? error.message : "The cover photo could not be uploaded.",
+      ),
+    );
+  }
 
   if (cover) {
     await prisma.trip.update({

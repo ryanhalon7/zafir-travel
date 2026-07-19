@@ -39,7 +39,7 @@ export function MobileNavigation({ tripId }: MobileNavigationProps) {
 
   function isActive(item: NavItem) {
     if (!item.tab) {
-      return pathname === "/dashboard";
+      return pathname === "/dashboard" || pathname === "/trips/new";
     }
 
     if (!isTripPage) {
