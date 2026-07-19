@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import { SearchBox } from "@mapbox/search-js-react";
+import type { SearchBoxRetrieveResponse } from "@mapbox/search-js-core";
 import {
   CalendarDays,
   Columns3,
@@ -35,6 +37,8 @@ export type EventItem = {
   startTime: string;
   endTime: string;
   locationName: string;
+  locationAddress: string;
+  mapboxFeatureId: string;
   latitude: number | null;
   longitude: number | null;
   notes: string;
@@ -65,6 +69,9 @@ const categories = [
   ["ACTIVITY", "Activity"],
   ["FOOD", "Restaurant"],
   ["TRANSPORT", "Transport"],
+  ["SHOPPING", "Shopping"],
+  ["TOUR", "Tour"],
+  ["OTHER", "Other"],
 ] as const;
 
 const categoryEmoji: Record<string, string> = {
@@ -73,6 +80,9 @@ const categoryEmoji: Record<string, string> = {
   ACTIVITY: "🎭",
   FOOD: "🍽️",
   TRANSPORT: "🚕",
+  SHOPPING: "🛍️",
+  TOUR: "🗺️",
+  OTHER: "📌",
 };
 
 function categoryLabel(category: string) {
@@ -131,6 +141,7 @@ export function ItineraryBoard({
   const [selectedDayId, setSelectedDayId] = useState(days[0]?.id ?? "");
   const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [addDayId, setAddDayId] = useState(days[0]?.id ?? "");
   const [mounted, setMounted] = useState(false);
   const addPanelRef = useRef<HTMLDivElement>(null);
   const [, startTransition] = useTransition();
@@ -161,8 +172,23 @@ export function ItineraryBoard({
   }
 
   function openAddEvent() {
+    setAddDayId(selectedDay?.id ?? orderedDays[0]?.id ?? "");
     setShowAddEvent(true);
-    window.setTimeout(() => addPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+  }
+
+  if (showAddEvent && orderedDays.length) {
+    const addDay = orderedDays.find((day) => day.id === addDayId) ?? orderedDays[0];
+    return (
+      <section ref={addPanelRef} className="mx-auto min-h-[calc(100dvh-8rem)] max-w-2xl pb-8">
+        <header className="flex items-center gap-3 border-b border-burgundy/10 pb-4">
+          <button type="button" onClick={() => setShowAddEvent(false)} className="inline-flex items-center gap-0.5 text-sm text-burgundy hover:text-terracotta"><X className="h-4 w-4" /> Back</button>
+          <h2 className="font-heading text-3xl text-espresso">Add Event</h2>
+        </header>
+        <div className="mt-5">
+          <EventForm tripId={tripId} dayId={addDay.id} days={orderedDays} onDayChange={setAddDayId} onSubmitted={() => setShowAddEvent(false)} dedicated />
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -276,16 +302,6 @@ export function ItineraryBoard({
             </div>
           )}
 
-          {showAddEvent ? (
-            <div ref={addPanelRef} className="mt-6 rounded-2xl border border-burgundy/10 bg-ivory p-5 shadow-luxe sm:p-6">
-              <div className="mb-5 flex items-center justify-between">
-                <div><p className="text-xs font-bold uppercase tracking-wider text-terracotta">Day {selectedDay.dayNumber}</p><h3 className="font-heading text-2xl text-espresso">Add event</h3></div>
-                <Button type="button" variant="ghost" size="icon" onClick={() => setShowAddEvent(false)} aria-label="Close add event"><X className="h-4 w-4" /></Button>
-              </div>
-              <EventForm tripId={tripId} dayId={selectedDay.id} />
-            </div>
-          ) : null}
-
           {mounted ? createPortal(
             <button type="button" onClick={openAddEvent} aria-label="Add event" className="fixed bottom-24 right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-[#cb6d45] text-white shadow-luxe transition hover:scale-105 hover:bg-terracotta md:bottom-8 md:right-8">
               <Plus className="h-5 w-5" strokeWidth={3} />
@@ -302,30 +318,88 @@ function ViewIcon({ active, label, onClick, children }: { active?: boolean; labe
   return <button type="button" onClick={onClick} aria-label={label} aria-pressed={active} className={cn("flex h-9 w-9 items-center justify-center rounded-xl border border-burgundy/15 bg-ivory text-burgundy shadow-sm transition hover:border-terracotta/40", active && "bg-terracotta/10 text-terracotta")}>{children}</button>;
 }
 
-function EventForm({ tripId, dayId, event }: { tripId: string; dayId: string; event?: EventItem }) {
+function EventForm({ tripId, dayId, event, days, onDayChange, onSubmitted, dedicated = false }: { tripId: string; dayId: string; event?: EventItem; days?: DayItem[]; onDayChange?: (dayId: string) => void; onSubmitted?: () => void; dedicated?: boolean }) {
+  const [category, setCategory] = useState(event?.category ?? "ACTIVITY");
+  const [location, setLocation] = useState({
+    name: event?.locationName ?? "",
+    address: event?.locationAddress ?? "",
+    featureId: event?.mapboxFeatureId ?? "",
+    latitude: event?.latitude ?? null,
+    longitude: event?.longitude ?? null,
+  });
   function closeFormAfterSubmit(submitEvent: React.FormEvent<HTMLFormElement>) {
     submitEvent.currentTarget.closest("details")?.removeAttribute("open");
+    onSubmitted?.();
   }
   return (
     <form action={event ? updateEventAction : createEventAction} className="grid gap-4" onSubmit={closeFormAfterSubmit}>
       <input name="tripId" type="hidden" value={tripId} />
       <input name="dayId" type="hidden" value={dayId} />
+      <input name="category" type="hidden" value={category} />
       {event ? <input name="eventId" type="hidden" value={event.id} /> : null}
-      <div className="grid gap-3 sm:grid-cols-[1.3fr_0.8fr]">
-        <div className="space-y-2"><Label htmlFor={`${event?.id ?? dayId}-title`}>Title</Label><Input id={`${event?.id ?? dayId}-title`} name="title" defaultValue={event?.title} placeholder="Dinner at Le Jardin" required /></div>
-        <div className="space-y-2"><Label htmlFor={`${event?.id ?? dayId}-category`}>Category</Label><NativeSelect id={`${event?.id ?? dayId}-category`} name="category" defaultValue={event?.category ?? "ACTIVITY"}>{categories.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</NativeSelect></div>
+      {dedicated ? <div className="space-y-2"><Label>Category</Label><div className="flex flex-wrap gap-2">{categories.map(([value, label]) => <button key={value} type="button" onClick={() => setCategory(value)} className={cn("rounded-full border border-burgundy/15 bg-white/70 px-3 py-2 text-xs font-semibold text-espresso transition", category === value && "border-terracotta bg-terracotta/10 text-terracotta")}>{categoryEmoji[value]} <span className="ml-1">{label}</span></button>)}</div></div> : null}
+      <div className={cn("grid gap-3", !dedicated && "sm:grid-cols-[1.3fr_0.8fr]")}>
+        <div className="space-y-2"><Label htmlFor={`${event?.id ?? dayId}-title`}>Event title</Label><Input id={`${event?.id ?? dayId}-title`} name="title" defaultValue={event?.title} placeholder="e.g. Dinner at Le Grand Véfour" required /></div>
+        {!dedicated ? <div className="space-y-2"><Label htmlFor={`${event?.id ?? dayId}-category`}>Category</Label><NativeSelect id={`${event?.id ?? dayId}-category`} value={category} onChange={(changeEvent) => setCategory(changeEvent.target.value)}>{categories.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</NativeSelect></div> : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2"><Label htmlFor={`${event?.id ?? dayId}-startTime`}>Start time</Label><Input id={`${event?.id ?? dayId}-startTime`} name="startTime" type="time" defaultValue={event?.startTime} /></div>
-        <div className="space-y-2"><Label htmlFor={`${event?.id ?? dayId}-endTime`}>End time</Label><Input id={`${event?.id ?? dayId}-endTime`} name="endTime" type="time" defaultValue={event?.endTime} /></div>
+        {dedicated && days ? <div className="space-y-2"><Label htmlFor={`${dayId}-day`}>Day</Label><NativeSelect id={`${dayId}-day`} value={dayId} onChange={(changeEvent) => onDayChange?.(changeEvent.target.value)}>{days.map((day) => <option key={day.id} value={day.id}>Day {day.dayNumber} · {day.dateLabel}</option>)}</NativeSelect></div> : <div className="space-y-2"><Label htmlFor={`${event?.id ?? dayId}-endTime`}>End time</Label><Input id={`${event?.id ?? dayId}-endTime`} name="endTime" type="time" defaultValue={event?.endTime} /></div>}
       </div>
-      <div className="space-y-2"><Label htmlFor={`${event?.id ?? dayId}-locationName`}>Location</Label><Input id={`${event?.id ?? dayId}-locationName`} name="locationName" defaultValue={event?.locationName} placeholder="Riad El Fenn" /></div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2"><Label htmlFor={`${event?.id ?? dayId}-latitude`}>Latitude</Label><Input id={`${event?.id ?? dayId}-latitude`} name="latitude" type="number" step="any" defaultValue={event?.latitude ?? ""} /></div>
-        <div className="space-y-2"><Label htmlFor={`${event?.id ?? dayId}-longitude`}>Longitude</Label><Input id={`${event?.id ?? dayId}-longitude`} name="longitude" type="number" step="any" defaultValue={event?.longitude ?? ""} /></div>
-      </div>
+      {dedicated ? <input name="endTime" type="hidden" value="" /> : null}
+      <LocationSearch id={`${event?.id ?? dayId}-location`} value={location} onChange={setLocation} />
+      <input name="locationName" type="hidden" value={location.name} />
+      <input name="locationAddress" type="hidden" value={location.address} />
+      <input name="mapboxFeatureId" type="hidden" value={location.featureId} />
+      <input name="latitude" type="hidden" value={location.latitude ?? ""} />
+      <input name="longitude" type="hidden" value={location.longitude ?? ""} />
       <div className="space-y-2"><Label htmlFor={`${event?.id ?? dayId}-notes`}>Notes</Label><Textarea id={`${event?.id ?? dayId}-notes`} name="notes" defaultValue={event?.notes} placeholder="Reservation notes or booking details" /></div>
-      <div className="flex flex-wrap gap-3"><Button type="submit">{event ? "Save event" : "Add event"}</Button>{event ? <Button formAction={deleteEventAction} type="submit" variant="outline"><Trash2 className="h-4 w-4" />Delete</Button> : null}</div>
+      <div className="flex flex-wrap gap-3"><Button className={cn(dedicated && "mt-4 w-full")} type="submit">{event ? "Save event" : "Save Event"}</Button>{event ? <Button formAction={deleteEventAction} type="submit" variant="outline"><Trash2 className="h-4 w-4" />Delete</Button> : null}</div>
     </form>
+  );
+}
+
+type LocationValue = {
+  name: string;
+  address: string;
+  featureId: string;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+function LocationSearch({ id, value, onChange }: { id: string; value: LocationValue; onChange: (value: LocationValue) => void }) {
+  const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+
+  function selectLocation(response: SearchBoxRetrieveResponse) {
+    const feature = response.features[0];
+    if (!feature) return;
+    const properties = feature.properties;
+    onChange({
+      name: properties.name_preferred || properties.name,
+      address: properties.full_address || properties.place_formatted || properties.name,
+      featureId: properties.mapbox_id,
+      latitude: properties.coordinates.latitude,
+      longitude: properties.coordinates.longitude,
+    });
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>Location</Label>
+      {token ? (
+        <SearchBox
+          accessToken={token}
+          value={value.name}
+          onChange={(name) => onChange({ name, address: name, featureId: "", latitude: null, longitude: null })}
+          onRetrieve={selectLocation}
+          placeholder="Search for an address or venue"
+          options={{ language: "en" }}
+          theme={{ variables: { colorPrimary: "#b85d3b", borderRadius: "12px", fontFamily: "inherit" } }}
+        />
+      ) : (
+        <Input id={id} value={value.name} onChange={(changeEvent) => onChange({ name: changeEvent.target.value, address: changeEvent.target.value, featureId: "", latitude: null, longitude: null })} placeholder="Address or venue name" />
+      )}
+      {value.featureId ? <p className="flex items-start gap-1.5 text-xs text-terracotta"><MapPin className="mt-0.5 h-3 w-3 shrink-0" />{value.address}</p> : <p className="text-xs text-espresso/50">Select a suggestion to place this event accurately on the map.</p>}
+    </div>
   );
 }

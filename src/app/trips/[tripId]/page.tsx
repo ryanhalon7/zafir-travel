@@ -137,6 +137,8 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
       startTime: timeInputValue(event.startTime),
       endTime: timeInputValue(event.endTime),
       locationName: event.locationName ?? "",
+      locationAddress: event.locationAddress ?? "",
+      mapboxFeatureId: event.mapboxFeatureId ?? "",
       latitude: event.latitude,
       longitude: event.longitude,
       notes: event.notes ?? "",

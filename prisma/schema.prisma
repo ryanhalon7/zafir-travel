@@ -26,6 +26,9 @@ enum EventCategory {
   ACTIVITY
   FOOD
   TRANSPORT
+  SHOPPING
+  TOUR
+  OTHER
 }
 
 enum ExpenseCategory {
@@ -138,6 +141,8 @@ model ItineraryEvent {
   startTime    DateTime?
   endTime      DateTime?
   locationName String?
+  locationAddress String?
+  mapboxFeatureId String?
   latitude     Float?
   longitude    Float?
   notes        String?

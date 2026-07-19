@@ -5,6 +5,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import mapboxgl, { type Map as MapboxMap, type Marker } from "mapbox-gl";
 import { ChevronLeft, ChevronRight, MapPin, MapPinned } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { ItineraryBoard, type DayItem, type EventItem } from "@/components/trips/itinerary-board";
 import { Button } from "@/components/ui/button";
@@ -316,7 +317,7 @@ function formatEventTime(value: string) {
 }
 
 function eventEmoji(category: string) {
-  return ({ FLIGHT: "✈️", LODGING: "🏨", ACTIVITY: "🎭", FOOD: "🍽️", TRANSPORT: "🚕" } as Record<string, string>)[category] ?? "📌";
+  return ({ FLIGHT: "✈️", LODGING: "🏨", ACTIVITY: "🎭", FOOD: "🍽️", TRANSPORT: "🚕", SHOPPING: "🛍️", TOUR: "🗺️", OTHER: "📌" } as Record<string, string>)[category] ?? "📌";
 }
 
 export function TripCalendar({ days, selectedEventId, onSelectEvent }: { days: DayItem[]; selectedEventId: string | null; onSelectEvent: (eventId: string, dayId: string) => void }) {
@@ -369,13 +370,19 @@ function TripMap({ days, destination, selectedDayId, selectedEventId, onSelectDa
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
+  const dragStartYRef = useRef<number | null>(null);
+  const didDragSheetRef = useRef(false);
+  const [mounted, setMounted] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [sheetExpanded, setSheetExpanded] = useState(false);
   const selectedDay = days.find((day) => day.id === selectedDayId) ?? days[0];
   const mappedEvents = useMemo(() => selectedDay?.events.filter(hasCoordinates) ?? [], [selectedDay]);
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
-    if (!containerRef.current || !token || mapRef.current) return;
+    if (!mounted || !containerRef.current || !token || mapRef.current) return;
     mapboxgl.accessToken = token;
     const map = new mapboxgl.Map({ container: containerRef.current, style: "mapbox://styles/mapbox/light-v11", center: [0, 20], zoom: 1.5, attributionControl: false });
     mapRef.current = map;
@@ -390,7 +397,7 @@ function TripMap({ days, destination, selectedDayId, selectedEventId, onSelectDa
       mapRef.current = null;
       setMapReady(false);
     };
-  }, [token]);
+  }, [mounted, token]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -409,15 +416,16 @@ function TripMap({ days, destination, selectedDayId, selectedEventId, onSelectDa
     if (mappedEvents.length) {
       const bounds = new mapboxgl.LngLatBounds();
       mappedEvents.forEach((event) => bounds.extend([event.longitude, event.latitude]));
-      map.fitBounds(bounds, { padding: { top: 85, right: 55, bottom: 55, left: 55 }, maxZoom: 13, duration: 600 });
+      map.fitBounds(bounds, { padding: { top: 85, right: 55, bottom: sheetExpanded ? 280 : 190, left: 55 }, maxZoom: 13, duration: 600 });
     }
-  }, [mapReady, mappedEvents, onSelectEvent, selectedDay, selectedEventId]);
+  }, [mapReady, mappedEvents, onSelectEvent, selectedDay, selectedEventId, sheetExpanded]);
 
-  if (!days.length) return <div className="rounded-2xl border border-dashed border-burgundy/15 p-8 text-center"><h2 className="font-heading text-2xl">Dates needed</h2><p className="mt-2 text-sm text-espresso/60">Add trip dates before using the map.</p></div>;
+  if (!mounted) return null;
+  if (!days.length) return createPortal(<div className="fixed inset-x-0 top-0 bottom-[4.5rem] z-40 flex items-center justify-center bg-cream p-8 text-center md:bottom-0"><div><h2 className="font-heading text-2xl">Dates needed</h2><p className="mt-2 text-sm text-espresso/60">Add trip dates before using the map.</p><Button className="mt-4" onClick={onBack}>Back to itinerary</Button></div></div>, document.body);
 
-  return (
-    <section className="relative -mx-4 -mt-8 min-h-[calc(100dvh-4.5rem)] overflow-hidden bg-[#aadbc0] sm:-mt-12 md:mx-0 md:mt-0 md:min-h-0 md:rounded-2xl md:shadow-luxe">
-      <div ref={containerRef} className="relative h-[58dvh] min-h-[400px] w-full bg-[linear-gradient(rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(160deg,#d2efdc,#82c9aa)] bg-[size:56px_56px,56px_56px,100%_100%] md:h-[520px]">
+  const mapScreen = (
+    <section className="fixed inset-x-0 top-0 z-40 h-[calc(100dvh_-_4.5rem)] overflow-hidden bg-[#aadbc0] md:h-dvh">
+      <div ref={containerRef} className="absolute inset-0 h-full w-full bg-[linear-gradient(rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(160deg,#d2efdc,#82c9aa)] bg-[size:56px_56px,56px_56px,100%_100%]">
         {!token ? <div className="flex h-full items-center justify-center px-8 text-center text-sm font-medium text-espresso/65">Add NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN to enable the interactive map.</div> : null}
       </div>
 
@@ -426,13 +434,42 @@ function TripMap({ days, destination, selectedDayId, selectedEventId, onSelectDa
         <MapPin className="h-3.5 w-3.5 shrink-0 fill-pink-500 text-pink-500" /><span className="truncate">{destination}</span>
       </div>
 
-      <div className="relative z-20 -mt-6 min-h-[calc(42dvh-3rem)] rounded-t-3xl bg-[#fffdf9] px-4 pb-5 pt-2 shadow-[0_-12px_35px_rgba(51,37,31,.14)] md:min-h-[280px]">
-        <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-[#d8c6ad]" />
+      <div
+        className="absolute inset-x-0 bottom-0 z-20 h-[78%] rounded-t-3xl bg-[#fffdf9] px-4 pb-5 pt-2 shadow-[0_-12px_35px_rgba(51,37,31,.18)] transition-transform duration-300 ease-out md:left-auto md:right-5 md:bottom-5 md:h-[min(78%,640px)] md:w-[390px] md:rounded-3xl"
+        style={{ transform: sheetExpanded ? "translateY(0)" : "translateY(calc(100% - 12rem))" }}
+      >
+        <button
+          type="button"
+          className="block w-full touch-none pb-3 pt-1"
+          aria-label={sheetExpanded ? "Collapse locations" : "Expand locations"}
+          aria-expanded={sheetExpanded}
+          onClick={() => {
+            if (didDragSheetRef.current) {
+              didDragSheetRef.current = false;
+              return;
+            }
+            setSheetExpanded((value) => !value);
+          }}
+          onPointerDown={(pointerEvent) => {
+            dragStartYRef.current = pointerEvent.clientY;
+            pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId);
+          }}
+          onPointerUp={(pointerEvent) => {
+            if (dragStartYRef.current === null) return;
+            const distance = pointerEvent.clientY - dragStartYRef.current;
+            didDragSheetRef.current = Math.abs(distance) > 8;
+            if (distance < -35) setSheetExpanded(true);
+            if (distance > 35) setSheetExpanded(false);
+            dragStartYRef.current = null;
+          }}
+        >
+          <span className="mx-auto block h-1 w-12 rounded-full bg-[#d8c6ad]" />
+        </button>
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-heading text-xl text-espresso">Day {selectedDay.dayNumber} · {selectedDay.events.length} {selectedDay.events.length === 1 ? "location" : "locations"}</h2>
           {days.length > 1 ? <NativeSelect aria-label="Map day" className="h-8 w-24 rounded-lg py-1 text-xs" value={selectedDay.id} onChange={(event) => onSelectDay(event.target.value)}>{days.map((day) => <option key={day.id} value={day.id}>Day {day.dayNumber}</option>)}</NativeSelect> : null}
         </div>
-        <div className="mt-3 max-h-[13.5rem] overflow-y-auto">
+        <div className="mt-3 h-[calc(100%_-_4rem)] overflow-y-auto overscroll-contain pb-4">
           {selectedDay.events.length ? selectedDay.events.map((event) => (
             <button key={event.id} type="button" onClick={() => onSelectEvent(event.id, selectedDay.id)} className={cn("flex w-full items-center gap-3 border-b border-burgundy/10 py-2 text-left transition last:border-0", selectedEventId === event.id && "bg-terracotta/5") }>
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cream text-sm">{eventEmoji(event.category)}</span>
@@ -444,6 +481,7 @@ function TripMap({ days, destination, selectedDayId, selectedEventId, onSelectDa
       </div>
     </section>
   );
+  return createPortal(mapScreen, document.body);
 }
 
 export function LegacyTripMap({ days, selectedDayId, selectedEventId, onSelectDay, onSelectEvent, onShowInItinerary }: { days: DayItem[]; selectedDayId: string; selectedEventId: string | null; onSelectDay: (id: string) => void; onSelectEvent: (eventId: string, dayId: string) => void; onShowInItinerary: (eventId: string, dayId: string) => void }) {

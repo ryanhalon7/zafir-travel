@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 // During schema changes, Next's dev server can retain an older @prisma/client
 // module whose newly-added enums are undefined until the process is restarted.
 const tripStatuses = ["PLANNING", "UPCOMING", "ACTIVE", "PAST"] as const;
-const eventCategories = ["FLIGHT", "LODGING", "ACTIVITY", "FOOD", "TRANSPORT"] as const;
+const eventCategories = ["FLIGHT", "LODGING", "ACTIVITY", "FOOD", "TRANSPORT", "SHOPPING", "TOUR", "OTHER"] as const;
 const expenseCategories = [
   "FLIGHT",
   "LODGING",
@@ -84,6 +84,8 @@ const eventSchema = z.object({
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   locationName: z.string().trim().max(160).optional(),
+  locationAddress: z.string().trim().max(300).optional(),
+  mapboxFeatureId: z.string().trim().max(240).optional(),
   latitude: z.coerce.number().min(-90).max(90).optional().or(z.literal("")),
   longitude: z.coerce.number().min(-180).max(180).optional().or(z.literal("")),
   notes: z.string().trim().max(1200).optional(),
@@ -593,6 +595,8 @@ export async function createEventAction(formData: FormData) {
     startTime: formData.get("startTime"),
     endTime: formData.get("endTime"),
     locationName: formData.get("locationName"),
+    locationAddress: formData.get("locationAddress"),
+    mapboxFeatureId: formData.get("mapboxFeatureId"),
     latitude: formData.get("latitude") || "",
     longitude: formData.get("longitude") || "",
     notes: formData.get("notes"),
@@ -625,6 +629,8 @@ export async function createEventAction(formData: FormData) {
       startTime: timeOnDay(day.date, parsed.data.startTime),
       endTime: timeOnDay(day.date, parsed.data.endTime),
       locationName: parsed.data.locationName || null,
+      locationAddress: parsed.data.locationAddress || null,
+      mapboxFeatureId: parsed.data.mapboxFeatureId || null,
       latitude: optionalNumber(parsed.data.latitude),
       longitude: optionalNumber(parsed.data.longitude),
       notes: parsed.data.notes || null,
@@ -647,6 +653,8 @@ export async function updateEventAction(formData: FormData) {
     startTime: formData.get("startTime"),
     endTime: formData.get("endTime"),
     locationName: formData.get("locationName"),
+    locationAddress: formData.get("locationAddress"),
+    mapboxFeatureId: formData.get("mapboxFeatureId"),
     latitude: formData.get("latitude") || "",
     longitude: formData.get("longitude") || "",
     notes: formData.get("notes"),
@@ -677,6 +685,8 @@ export async function updateEventAction(formData: FormData) {
       startTime: timeOnDay(day.date, parsed.data.startTime),
       endTime: timeOnDay(day.date, parsed.data.endTime),
       locationName: parsed.data.locationName || null,
+      locationAddress: parsed.data.locationAddress || null,
+      mapboxFeatureId: parsed.data.mapboxFeatureId || null,
       latitude: optionalNumber(parsed.data.latitude),
       longitude: optionalNumber(parsed.data.longitude),
       notes: parsed.data.notes || null,
