@@ -35,4 +35,21 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar,
+  .dashboard-hide-scrollbars::-webkit-scrollbar,
+  .dashboard-hide-scrollbars body::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dashboard-hide-scrollbars,
+  .dashboard-hide-scrollbars body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }

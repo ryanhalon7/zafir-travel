@@ -4,17 +4,27 @@ import { LogOut } from "lucide-react";
 import darkLogo from "../../../assets/Favicon-Dark.svg";
 
 import { signOutAction } from "@/app/actions";
+import { MobileNavigation } from "@/components/shell/mobile-navigation";
 import { Button } from "@/components/ui/button";
 
 type AppShellProps = {
   children: React.ReactNode;
   userEmail: string;
+  tripId?: string;
+  hideMobileHeader?: boolean;
 };
 
-export function AppShell({ children, userEmail }: AppShellProps) {
+export function AppShell({
+  children,
+  userEmail,
+  tripId,
+  hideMobileHeader = false,
+}: AppShellProps) {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(199,161,90,0.22),_transparent_34%),linear-gradient(180deg,_#fffaf0_0%,_#f8f0e5_48%,_#ead8bf_100%)]">
-      <header className="sticky top-0 z-20 border-b border-burgundy/10 bg-ivory/82 backdrop-blur-xl">
+      <header
+        className={`${hideMobileHeader ? "hidden md:block" : "block"} sticky top-0 z-20 border-b border-burgundy/10 bg-ivory/82 backdrop-blur-xl`}
+      >
         <div className="container flex min-h-20 items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted-gold/15 shadow-soft">
@@ -46,7 +56,8 @@ export function AppShell({ children, userEmail }: AppShellProps) {
           </div>
         </div>
       </header>
-      <main className="container py-8 sm:py-12">{children}</main>
+      <main className="container pb-28 pt-8 sm:pt-12 md:pb-12">{children}</main>
+      <MobileNavigation tripId={tripId} />
     </div>
   );
 }
