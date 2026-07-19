@@ -9,6 +9,7 @@ import { PhotoGallery } from "@/components/trips/photo-gallery";
 import { BudgetBoard } from "@/components/trips/budget-board";
 import { PackingList } from "@/components/trips/packing-list";
 import { DocumentVault } from "@/components/trips/document-vault";
+import { TripSectionTabs } from "@/components/trips/trip-section-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +24,7 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { MutationFeedback } from "@/components/ui/mutation-feedback";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { dateInputValue, formatDate, timeInputValue } from "@/lib/date-format";
 import { requireUser } from "@/lib/auth";
@@ -230,7 +231,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   );
 
   return (
-    <AppShell userEmail={user.email ?? ""}>
+    <AppShell userEmail={user.email ?? ""} tripId={trip.id}>
       <div className="mb-6">
         <Button asChild variant="ghost">
           <Link href="/dashboard">
@@ -278,7 +279,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
       ) : null}
 
       <MutationFeedback message={searchParams?.message}>
-      <Tabs defaultValue="itinerary" className="mt-8">
+      <TripSectionTabs>
         <TabsList>
           <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
           <TabsTrigger value="details">Details</TabsTrigger>
@@ -416,7 +417,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
             documents={documents.filter((document) => document.url)}
           />
         </TabsContent>
-      </Tabs>
+      </TripSectionTabs>
       </MutationFeedback>
     </AppShell>
   );
