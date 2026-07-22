@@ -124,6 +124,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   }
 
   const isItinerary = !searchParams?.tab || searchParams.tab === "itinerary";
+  const isFocusedTab = isItinerary || searchParams?.tab === "photos";
 
   const days = trip.days.map((day) => ({
     id: day.id,
@@ -154,8 +155,9 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
           url: photo.storagePath.slice("seed-external:".length),
           fileName: photo.fileName,
           caption: photo.caption ?? "",
+          uploaderId: photo.uploaderId,
           uploaderName: photo.uploader.displayName ?? photo.uploader.email,
-          createdAt: formatDate(photo.createdAt),
+          createdAt: photo.createdAt.toISOString(),
         };
       }
 
@@ -168,8 +170,9 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
         url: data?.signedUrl ?? "",
         fileName: photo.fileName,
         caption: photo.caption ?? "",
+        uploaderId: photo.uploaderId,
         uploaderName: photo.uploader.displayName ?? photo.uploader.email,
-        createdAt: formatDate(photo.createdAt),
+        createdAt: photo.createdAt.toISOString(),
       };
     }),
   );
@@ -236,8 +239,8 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   );
 
   return (
-    <AppShell userEmail={user.email ?? ""} tripId={trip.id} hideMobileHeader={isItinerary}>
-      {!isItinerary ? <div className="mb-6">
+    <AppShell userEmail={user.email ?? ""} tripId={trip.id} hideMobileHeader={isFocusedTab}>
+      {!isFocusedTab ? <div className="mb-6">
         <Button asChild variant="ghost">
           <Link href="/dashboard">
             <ArrowLeft className="h-4 w-4" />
@@ -246,7 +249,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
         </Button>
       </div> : null}
 
-      {!isItinerary ? <section
+      {!isFocusedTab ? <section
         className="relative overflow-hidden rounded-lg bg-cover bg-center px-6 py-14 text-ivory shadow-luxe sm:px-9 lg:py-20"
         style={{
           backgroundImage: `linear-gradient(90deg, rgba(51,37,31,0.82), rgba(95,22,38,0.34)), url('${
@@ -284,8 +287,8 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
       ) : null}
 
       <MutationFeedback message={searchParams?.message}>
-      <TripSectionTabs compact={isItinerary}>
-        {!isItinerary ? <TabsList>
+      <TripSectionTabs compact={isFocusedTab}>
+        {!isFocusedTab ? <TabsList>
           <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="photos">Photos</TabsTrigger>
@@ -407,7 +410,12 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
         </TabsContent>
 
         <TabsContent value="photos">
-          <PhotoGallery tripId={trip.id} photos={photos.filter((photo) => photo.url)} />
+          <PhotoGallery
+            tripId={trip.id}
+            tripName={trip.name}
+            currentUserId={user.id}
+            photos={photos.filter((photo) => photo.url)}
+          />
         </TabsContent>
         <TabsContent value="budget">
           <BudgetBoard
