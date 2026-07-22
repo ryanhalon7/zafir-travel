@@ -32,6 +32,16 @@ export function TripSectionTabs({ children, compact = false }: { children: React
     setSection(isSectionName(sectionFromUrl) ? sectionFromUrl : "itinerary");
   }, [sectionFromUrl]);
 
+  useEffect(() => {
+    function handleOptimisticTab(event: Event) {
+      if (!(event instanceof CustomEvent) || !isSectionName(event.detail)) return;
+      setSection(event.detail);
+    }
+
+    window.addEventListener("zafir:trip-tab", handleOptimisticTab);
+    return () => window.removeEventListener("zafir:trip-tab", handleOptimisticTab);
+  }, []);
+
   function selectSection(value: string) {
     if (!isSectionName(value)) return;
 

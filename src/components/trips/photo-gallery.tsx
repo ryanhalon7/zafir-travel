@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Camera, Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -25,6 +26,7 @@ type PhotoDay = {
 const signedImageLoader = ({ src }: { src: string }) => src;
 
 export function PhotoGallery({
+  tripId,
   photos,
   tripName,
   currentUserId,
@@ -47,9 +49,9 @@ export function PhotoGallery({
           <h1 className="font-heading text-[2.15rem] leading-none text-espresso md:text-5xl">Photos</h1>
           <p className="mt-2 text-sm text-espresso/55">{photos.length} {photos.length === 1 ? "memory" : "memories"} · {tripName}</p>
         </div>
-        <button type="button" className="absolute right-4 top-6 inline-flex items-center gap-1 rounded-xl bg-terracotta px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-terracotta/90 md:static" aria-label="Add photos">
+        <Link href={`/trips/${tripId}/photos/add`} className="absolute right-4 top-6 inline-flex items-center gap-1 rounded-xl bg-terracotta px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-terracotta/90 md:static" aria-label="Add photos">
           <Plus className="h-4 w-4" strokeWidth={3} /> Upload
-        </button>
+        </Link>
         <div className="mt-6 grid max-w-md grid-cols-4 gap-7 md:absolute md:mt-20">
           <Metric value={photos.length} label="Total" />
           <Metric value={mine} label="By me" />
@@ -94,7 +96,7 @@ export function PhotoGallery({
         </div>
       )}
 
-      <button type="button" aria-label="Add photos" className="fixed bottom-[5.7rem] right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-terracotta text-white shadow-luxe md:hidden"><Plus className="h-5 w-5" strokeWidth={3} /></button>
+      <Link href={`/trips/${tripId}/photos/add`} aria-label="Add photos" className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom)+1rem)] right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-terracotta text-white shadow-luxe md:hidden"><Plus className="h-5 w-5" strokeWidth={3} /></Link>
 
       {activePhoto ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-espresso/95 p-4" role="dialog" aria-modal="true" aria-label={activePhoto.caption || activePhoto.fileName} onClick={() => setActivePhoto(null)}>

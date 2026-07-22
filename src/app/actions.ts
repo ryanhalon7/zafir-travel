@@ -108,6 +108,7 @@ const reorderSchema = z.object({
 
 const photoUploadSchema = z.object({
   tripId: z.string().min(1),
+  dayId: z.string().min(1),
   caption: z.string().trim().max(240).optional(),
 });
 
@@ -172,7 +173,7 @@ const documentDeleteSchema = z.object({
 });
 
 function withMessage(path: string, message: string) {
-  return `${path}?message=${encodeURIComponent(message)}`;
+  return `${path}${path.includes("?") ? "&" : "?"}message=${encodeURIComponent(message)}`;
 }
 
 async function createInviteCode() {
@@ -757,6 +758,7 @@ export async function uploadTripPhotosAction(formData: FormData) {
   const user = await requireUser();
   const parsed = photoUploadSchema.safeParse({
     tripId: formData.get("tripId"),
+    dayId: formData.get("dayId"),
     caption: formData.get("caption") || undefined,
   });
 
@@ -766,20 +768,29 @@ export async function uploadTripPhotosAction(formData: FormData) {
 
   await requireTripMembership(user.id, parsed.data.tripId);
 
+  const day = await prisma.tripDay.findFirst({
+    where: { id: parsed.data.dayId, tripId: parsed.data.tripId },
+    select: { date: true },
+  });
+
+  if (!day) {
+    redirect(withMessage(`/trips/${parsed.data.tripId}/photos/add`, "Choose a valid trip day."));
+  }
+
   const files = formData
     .getAll("photos")
     .filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
   if (files.length === 0 || files.length > 12) {
-    redirect(withMessage(`/trips/${parsed.data.tripId}`, "Choose between 1 and 12 photos."));
+    redirect(withMessage(`/trips/${parsed.data.tripId}/photos/add`, "Choose between 1 and 12 photos."));
   }
 
   const invalidFile = files.find(
-    (file) => !file.type.startsWith("image/") || file.size > 12 * 1024 * 1024,
+    (file) => !file.type.startsWith("image/") || file.size > 50 * 1024 * 1024,
   );
 
   if (invalidFile) {
-    redirect(withMessage(`/trips/${parsed.data.tripId}`, "Each photo must be an image under 12 MB."));
+    redirect(withMessage(`/trips/${parsed.data.tripId}/photos/add`, "Each photo must be an image under 50 MB."));
   }
 
   const supabase = createClient();
@@ -806,6 +817,7 @@ export async function uploadTripPhotosAction(formData: FormData) {
           storagePath,
           fileName: file.name,
           caption: parsed.data.caption || null,
+          createdAt: day.date,
         },
       });
     }
@@ -816,14 +828,14 @@ export async function uploadTripPhotosAction(formData: FormData) {
     }
     redirect(
       withMessage(
-        `/trips/${parsed.data.tripId}`,
+        `/trips/${parsed.data.tripId}/photos/add`,
         error instanceof Error ? error.message : "Photos could not be uploaded.",
       ),
     );
   }
 
   revalidatePath(`/trips/${parsed.data.tripId}`);
-  redirect(withMessage(`/trips/${parsed.data.tripId}`, `${files.length} photo${files.length === 1 ? "" : "s"} added.`));
+  redirect(`/trips/${parsed.data.tripId}?tab=photos`);
 }
 
 export async function deleteTripPhotoAction(formData: FormData) {

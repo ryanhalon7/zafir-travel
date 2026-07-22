@@ -125,6 +125,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
 
   const isItinerary = !searchParams?.tab || searchParams.tab === "itinerary";
   const isFocusedTab = isItinerary || searchParams?.tab === "photos";
+  const mutationMessage = searchParams?.tab === "photos" ? undefined : searchParams?.message;
 
   const days = trip.days.map((day) => ({
     id: day.id,
@@ -280,13 +281,13 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
         </div>
       </section> : null}
 
-      {searchParams?.message ? (
+      {mutationMessage ? (
         <div className="mt-5 rounded-lg bg-ivory/80 px-5 py-4 text-sm font-semibold text-espresso shadow-soft">
-          {searchParams.message}
+          {mutationMessage}
         </div>
       ) : null}
 
-      <MutationFeedback message={searchParams?.message}>
+      <MutationFeedback message={mutationMessage}>
       <TripSectionTabs compact={isFocusedTab}>
         {!isFocusedTab ? <TabsList>
           <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
@@ -409,7 +410,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
           </div>
         </TabsContent>
 
-        <TabsContent value="photos">
+        <TabsContent value="photos" className="animate-none">
           <PhotoGallery
             tripId={trip.id}
             tripName={trip.name}

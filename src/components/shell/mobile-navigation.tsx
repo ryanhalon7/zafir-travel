@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   Camera,
   CircleDollarSign,
@@ -34,8 +35,24 @@ const navigationItems: NavItem[] = [
 export function MobileNavigation({ tripId }: MobileNavigationProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const selectedTab = searchParams.get("tab") ?? "itinerary";
-  const isTripPage = Boolean(tripId && pathname.startsWith(`/trips/${tripId}`));
+  const tabFromUrl = searchParams.get("tab") ?? "itinerary";
+  const [selectedTab, setSelectedTab] = useState(tabFromUrl);
+  const isTripPage = Boolean(tripId && pathname === `/trips/${tripId}`);
+
+  useEffect(() => setSelectedTab(tabFromUrl), [tabFromUrl]);
+
+  function selectTripTab(event: React.MouseEvent<HTMLAnchorElement>, tab?: NavItem["tab"]) {
+    if (!tab || !isTripPage) return;
+
+    event.preventDefault();
+    setSelectedTab(tab);
+
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("tab", tab);
+    nextUrl.searchParams.delete("message");
+    window.history.replaceState(window.history.state, "", nextUrl);
+    window.dispatchEvent(new CustomEvent("zafir:trip-tab", { detail: tab }));
+  }
 
   function isActive(item: NavItem) {
     if (!item.tab) {
@@ -98,6 +115,7 @@ export function MobileNavigation({ tripId }: MobileNavigationProps) {
             <Link
               key={item.label}
               href={href}
+              onClick={(event) => selectTripTab(event, item.tab)}
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg text-espresso/55 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-muted-gold focus-visible:ring-inset",
