@@ -62,44 +62,50 @@ enum DocumentCategory {
 }
 
 model User {
-  id            String       @id @db.Uuid
-  email         String       @unique
-  displayName   String?
-  createdTrips  Trip[]       @relation("TripCreator")
-  memberships   TripMember[]
-  uploadedPhotos TripPhoto[]
-  paidExpenses   TripExpense[]
+  id                 String         @id @db.Uuid
+  email              String         @unique
+  displayName        String?
+  createdTrips       Trip[]         @relation("TripCreator")
+  memberships        TripMember[]
+  uploadedPhotos     TripPhoto[]
+  paidExpenses       TripExpense[]
   packingAssignments PackingItem[]
-  uploadedDocuments TripDocument[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  uploadedDocuments  TripDocument[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   @@map("users")
 }
 
 model Trip {
-  id             String           @id @default(cuid())
-  name           String
-  destinations   String[]         @default([])
-  startDate      DateTime?
-  endDate        DateTime?
-  coverPhotoUrl  String?
-  coverPhotoPath String?
-  budgetAmount   Decimal?         @db.Decimal(12, 2)
-  currency       String           @default("USD")
-  status         TripStatus       @default(PLANNING)
-  inviteCode     String           @unique
-  createdById    String           @db.Uuid
-  createdBy      User             @relation("TripCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  members        TripMember[]
-  days           TripDay[]
-  events         ItineraryEvent[]
-  photos         TripPhoto[]
-  expenses       TripExpense[]
-  packingItems   PackingItem[]
-  documents      TripDocument[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  id                  String           @id @default(cuid())
+  name                String
+  destinations        String[]         @default([])
+  startDate           DateTime?
+  endDate             DateTime?
+  coverPhotoUrl       String?
+  coverPhotoPath      String?
+  budgetAmount        Decimal?         @db.Decimal(12, 2)
+  accommodationBudget Decimal?         @db.Decimal(12, 2)
+  transportBudget     Decimal?         @db.Decimal(12, 2)
+  foodBudget          Decimal?         @db.Decimal(12, 2)
+  activitiesBudget    Decimal?         @db.Decimal(12, 2)
+  shoppingBudget      Decimal?         @db.Decimal(12, 2)
+  otherBudget         Decimal?         @db.Decimal(12, 2)
+  currency            String           @default("USD")
+  status              TripStatus       @default(PLANNING)
+  inviteCode          String           @unique
+  createdById         String           @db.Uuid
+  createdBy           User             @relation("TripCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  members             TripMember[]
+  days                TripDay[]
+  events              ItineraryEvent[]
+  photos              TripPhoto[]
+  expenses            TripExpense[]
+  packingItems        PackingItem[]
+  documents           TripDocument[]
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
   @@map("trips")
 }
@@ -133,40 +139,40 @@ model TripDay {
 }
 
 model ItineraryEvent {
-  id           String        @id @default(cuid())
-  tripId       String
-  dayId        String
-  title        String
-  category     EventCategory
-  startTime    DateTime?
-  endTime      DateTime?
-  locationName String?
+  id              String        @id @default(cuid())
+  tripId          String
+  dayId           String
+  title           String
+  category        EventCategory
+  startTime       DateTime?
+  endTime         DateTime?
+  locationName    String?
   locationAddress String?
   mapboxFeatureId String?
-  latitude     Float?
-  longitude    Float?
-  notes        String?
-  sortOrder    Int           @default(0)
-  trip         Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  day          TripDay       @relation(fields: [dayId], references: [id], onDelete: Cascade)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  latitude        Float?
+  longitude       Float?
+  notes           String?
+  sortOrder       Int           @default(0)
+  trip            Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  day             TripDay       @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([tripId, dayId, sortOrder])
   @@map("itinerary_events")
 }
 
 model TripPhoto {
-  id         String   @id @default(cuid())
-  tripId     String
-  uploaderId String   @db.Uuid
-  storagePath String  @unique
-  fileName   String
-  caption    String?
-  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  uploader   User     @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(cuid())
+  tripId      String
+  uploaderId  String   @db.Uuid
+  storagePath String   @unique
+  fileName    String
+  caption     String?
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  uploader    User     @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([tripId, createdAt])
   @@map("trip_photos")

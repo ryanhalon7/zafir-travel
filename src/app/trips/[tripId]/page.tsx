@@ -124,7 +124,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   }
 
   const isItinerary = !searchParams?.tab || searchParams.tab === "itinerary";
-  const isFocusedTab = isItinerary || searchParams?.tab === "photos";
+  const isFocusedTab = isItinerary || searchParams?.tab === "photos" || searchParams?.tab === "budget";
   const mutationMessage = searchParams?.tab === "photos" ? undefined : searchParams?.message;
 
   const days = trip.days.map((day) => ({
@@ -181,6 +181,8 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
     id: member.userId,
     name: member.user.displayName ?? member.user.email,
   }));
+  const totalBudget = trip.budgetAmount?.toNumber() ?? null;
+  const defaultCategoryBudget = (ratio: number) => totalBudget === null ? null : Math.round(totalBudget * ratio);
   const expenses = trip.expenses.map((expense) => ({
     id: expense.id,
     title: expense.title,
@@ -240,7 +242,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   );
 
   return (
-    <AppShell userEmail={user.email ?? ""} tripId={trip.id} hideMobileHeader={isFocusedTab}>
+    <AppShell userEmail={user.email ?? ""} tripId={trip.id} hideMobileHeader={isFocusedTab} travelerNames={budgetMembers.map((member) => member.name)}>
       {!isFocusedTab ? <div className="mb-6">
         <Button asChild variant="ghost">
           <Link href="/dashboard">
@@ -421,7 +423,16 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
         <TabsContent value="budget">
           <BudgetBoard
             tripId={trip.id}
-            budgetAmount={trip.budgetAmount?.toNumber() ?? null}
+            tripName={trip.name}
+            budgetAmount={totalBudget}
+            categoryBudgets={{
+              accommodation: trip.accommodationBudget?.toNumber() ?? defaultCategoryBudget(0.29),
+              transport: trip.transportBudget?.toNumber() ?? defaultCategoryBudget(0.19),
+              food: trip.foodBudget?.toNumber() ?? defaultCategoryBudget(0.21),
+              activities: trip.activitiesBudget?.toNumber() ?? defaultCategoryBudget(0.14),
+              shopping: trip.shoppingBudget?.toNumber() ?? defaultCategoryBudget(0.10),
+              other: trip.otherBudget?.toNumber() ?? defaultCategoryBudget(0.07),
+            }}
             currency={trip.currency}
             members={budgetMembers}
             expenses={expenses}

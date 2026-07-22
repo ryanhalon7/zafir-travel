@@ -42,6 +42,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const dashboardTrips: DashboardTrip[] = trips.map((trip) => ({
     id: trip.id,
+    inviteCode: trip.inviteCode,
     name: trip.name,
     destinations: trip.destinations,
     startDate: trip.startDate?.toISOString() ?? null,
@@ -73,6 +74,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       userEmail={user.email ?? ""}
       tripId={trips[0]?.id}
       hideMobileHeader
+      travelerNames={travelerNames}
     >
       <TripsDashboard
         trips={dashboardTrips}

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Plus, Search, TicketCheck, UsersRound } from "lucide-react";
+import { CalendarDays, Check, Copy, Plus, Search, TicketCheck, UsersRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ type TripStatus = "PLANNING" | "UPCOMING" | "ACTIVE" | "PAST";
 
 export type DashboardTrip = {
   id: string;
+  inviteCode: string;
   name: string;
   destinations: string[];
   startDate: string | null;
@@ -156,7 +157,7 @@ export function TripsDashboard({
 
       <section className="mt-7" aria-live="polite">
         {visibleTrips.length > 0 ? (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-5 lg:grid-cols-2">
             {visibleTrips.map((trip) => (
               <TripCard key={trip.id} trip={trip} />
             ))}
@@ -204,7 +205,7 @@ export function TripsDashboard({
 
       <Button
         asChild
-        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-40 h-14 rounded-full px-6 shadow-luxe md:bottom-8 md:right-8"
+        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-40 h-14 rounded-full px-6 shadow-luxe md:bottom-8 md:right-5 lg:right-6"
       >
         <Link href="/trips/new">
           <Plus className="h-5 w-5" aria-hidden="true" />
@@ -216,18 +217,26 @@ export function TripsDashboard({
 }
 
 function TripCard({ trip }: { trip: DashboardTrip }) {
+  const [copied, setCopied] = useState(false);
   const dates = formatDateRange(trip.startDate, trip.endDate);
   const duration = tripDuration(trip.startDate, trip.endDate);
   const budgetPercent = trip.budgetAmount
     ? Math.min(100, Math.max(0, (trip.spentAmount / trip.budgetAmount) * 100))
     : 0;
 
+  async function copyInviteCode() {
+    await navigator.clipboard.writeText(trip.inviteCode);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
+
   return (
-    <Link
-      href={`/trips/${trip.id}`}
-      aria-label={`Open ${trip.name}`}
-      className="group block overflow-hidden rounded-3xl bg-ivory shadow-soft transition duration-200 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-muted-gold focus-visible:ring-offset-2 md:hover:-translate-y-1 md:hover:shadow-luxe"
-    >
+    <article className="group relative overflow-hidden rounded-3xl bg-ivory shadow-soft transition duration-200 md:hover:-translate-y-1 md:hover:shadow-luxe">
+      <Link
+        href={`/trips/${trip.id}`}
+        aria-label={`Open ${trip.name}`}
+        className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-muted-gold"
+      >
       <div
         className="relative flex min-h-52 flex-col justify-between bg-cover bg-center p-4 text-ivory"
         style={{
@@ -246,8 +255,19 @@ function TripCard({ trip }: { trip: DashboardTrip }) {
           </p>
         </div>
       </div>
+      </Link>
 
-      <div className="space-y-4 p-4 text-sm text-espresso/60">
+      <button
+        type="button"
+        onClick={copyInviteCode}
+        className="absolute right-3 top-3 z-10 inline-flex h-8 items-center gap-1.5 rounded-full bg-ivory/90 px-3 text-[0.65rem] font-bold text-burgundy shadow-soft backdrop-blur transition hover:bg-ivory focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-muted-gold"
+        aria-label={`Copy invite code for ${trip.name}`}
+      >
+        {copied ? <Check className="h-3.5 w-3.5 text-terracotta" /> : <Copy className="h-3.5 w-3.5" />}
+        {copied ? "Copied" : "Invite"}
+      </button>
+
+      <Link href={`/trips/${trip.id}`} tabIndex={-1} aria-hidden="true" className="block space-y-4 p-4 text-sm text-espresso/60">
         <div className="flex items-start justify-between gap-4">
           <span>{dates}</span>
           <span className="shrink-0">{duration}</span>
@@ -276,8 +296,8 @@ function TripCard({ trip }: { trip: DashboardTrip }) {
             </div>
           </div>
         )}
-      </div>
-    </Link>
+      </Link>
+    </article>
   );
 }
 

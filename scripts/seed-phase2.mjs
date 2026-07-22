@@ -120,6 +120,12 @@ try {
         "https://images.unsplash.com/photo-1548018560-c7196548e84d?auto=format&fit=crop&w=1600&q=80",
       coverPhotoPath: null,
       budgetAmount: 4800,
+      accommodationBudget: 1500,
+      transportBudget: 1500,
+      foodBudget: 800,
+      activitiesBudget: 500,
+      shoppingBudget: 300,
+      otherBudget: 200,
       currency: "USD",
       createdById: seedOwner.id,
     },
@@ -135,6 +141,12 @@ try {
       coverPhotoUrl:
         "https://images.unsplash.com/photo-1548018560-c7196548e84d?auto=format&fit=crop&w=1600&q=80",
       budgetAmount: 4800,
+      accommodationBudget: 1500,
+      transportBudget: 1500,
+      foodBudget: 800,
+      activitiesBudget: 500,
+      shoppingBudget: 300,
+      otherBudget: 200,
       currency: "USD",
       members: {
         create: {
