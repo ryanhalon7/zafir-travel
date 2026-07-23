@@ -119,8 +119,14 @@ const photoDeleteSchema = z.object({
 
 const budgetSettingsSchema = z.object({
   tripId: z.string().min(1),
-  budgetAmount: z.union([z.coerce.number().positive().max(9999999999), z.literal("")]),
+  budgetAmount: z.union([z.literal(""), z.coerce.number().positive().max(9999999999)]),
   currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
+  accommodationBudget: z.union([z.literal(""), z.coerce.number().nonnegative().max(9999999999)]),
+  transportBudget: z.union([z.literal(""), z.coerce.number().nonnegative().max(9999999999)]),
+  foodBudget: z.union([z.literal(""), z.coerce.number().nonnegative().max(9999999999)]),
+  activitiesBudget: z.union([z.literal(""), z.coerce.number().nonnegative().max(9999999999)]),
+  shoppingBudget: z.union([z.literal(""), z.coerce.number().nonnegative().max(9999999999)]),
+  otherBudget: z.union([z.literal(""), z.coerce.number().nonnegative().max(9999999999)]),
 });
 
 const expenseSchema = z.object({
@@ -877,6 +883,12 @@ export async function updateBudgetSettingsAction(formData: FormData) {
     tripId: formData.get("tripId"),
     budgetAmount: formData.get("budgetAmount") || "",
     currency: formData.get("currency"),
+    accommodationBudget: formData.get("accommodationBudget") || "",
+    transportBudget: formData.get("transportBudget") || "",
+    foodBudget: formData.get("foodBudget") || "",
+    activitiesBudget: formData.get("activitiesBudget") || "",
+    shoppingBudget: formData.get("shoppingBudget") || "",
+    otherBudget: formData.get("otherBudget") || "",
   });
 
   if (!parsed.success) {
@@ -889,11 +901,17 @@ export async function updateBudgetSettingsAction(formData: FormData) {
     data: {
       budgetAmount: parsed.data.budgetAmount === "" ? null : parsed.data.budgetAmount,
       currency: parsed.data.currency,
+      accommodationBudget: parsed.data.accommodationBudget === "" ? null : parsed.data.accommodationBudget,
+      transportBudget: parsed.data.transportBudget === "" ? null : parsed.data.transportBudget,
+      foodBudget: parsed.data.foodBudget === "" ? null : parsed.data.foodBudget,
+      activitiesBudget: parsed.data.activitiesBudget === "" ? null : parsed.data.activitiesBudget,
+      shoppingBudget: parsed.data.shoppingBudget === "" ? null : parsed.data.shoppingBudget,
+      otherBudget: parsed.data.otherBudget === "" ? null : parsed.data.otherBudget,
     },
   });
 
   revalidatePath(`/trips/${parsed.data.tripId}`);
-  redirect(withMessage(`/trips/${parsed.data.tripId}`, "Budget settings saved."));
+  redirect(withMessage(`/trips/${parsed.data.tripId}?tab=budget`, "Budget settings saved."));
 }
 
 async function requireExpensePayer(tripId: string, payerId: string) {

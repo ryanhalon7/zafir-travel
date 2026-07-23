@@ -7,6 +7,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { TripPlanner } from "@/components/trips/trip-planner";
 import { PhotoGallery } from "@/components/trips/photo-gallery";
 import { BudgetBoard } from "@/components/trips/budget-board";
+import { BudgetSettings } from "@/components/trips/budget-settings";
 import { PackingList } from "@/components/trips/packing-list";
 import { DocumentVault } from "@/components/trips/document-vault";
 import { TripSectionTabs } from "@/components/trips/trip-section-tabs";
@@ -38,6 +39,7 @@ type TripPageProps = {
   searchParams?: {
     message?: string;
     tab?: string;
+    screen?: string;
   };
 };
 
@@ -421,7 +423,19 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
           />
         </TabsContent>
         <TabsContent value="budget">
-          <BudgetBoard
+          {searchParams?.screen === "settings" ? <BudgetSettings
+            tripId={trip.id}
+            budgetAmount={totalBudget}
+            categoryBudgets={{
+              accommodation: trip.accommodationBudget?.toNumber() ?? defaultCategoryBudget(0.29),
+              transport: trip.transportBudget?.toNumber() ?? defaultCategoryBudget(0.19),
+              food: trip.foodBudget?.toNumber() ?? defaultCategoryBudget(0.21),
+              activities: trip.activitiesBudget?.toNumber() ?? defaultCategoryBudget(0.14),
+              shopping: trip.shoppingBudget?.toNumber() ?? defaultCategoryBudget(0.10),
+              other: trip.otherBudget?.toNumber() ?? defaultCategoryBudget(0.07),
+            }}
+            currency={trip.currency}
+          /> : <BudgetBoard
             tripId={trip.id}
             tripName={trip.name}
             budgetAmount={totalBudget}
@@ -436,7 +450,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
             currency={trip.currency}
             members={budgetMembers}
             expenses={expenses}
-          />
+          />}
         </TabsContent>
         <TabsContent value="packing">
           <PackingList tripId={trip.id} members={budgetMembers} items={packingItems} />
