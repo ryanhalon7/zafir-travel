@@ -9,6 +9,7 @@ import { PhotoGallery } from "@/components/trips/photo-gallery";
 import { BudgetBoard } from "@/components/trips/budget-board";
 import { BudgetSettings } from "@/components/trips/budget-settings";
 import { BudgetExpenses } from "@/components/trips/budget-expenses";
+import { AddExpenseForm } from "@/components/trips/expense-form";
 import { PackingList } from "@/components/trips/packing-list";
 import { DocumentVault } from "@/components/trips/document-vault";
 import { TripSectionTabs } from "@/components/trips/trip-section-tabs";
@@ -423,7 +424,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
             photos={photos.filter((photo) => photo.url)}
           />
         </TabsContent>
-        <TabsContent value="budget" className="mt-0 min-w-0 max-w-full overflow-x-clip">
+        <TabsContent value="budget" className="mt-0 min-w-0 max-w-full overflow-visible">
           {searchParams?.screen === "settings" ? <BudgetSettings
             tripId={trip.id}
             budgetAmount={totalBudget}
@@ -440,6 +441,10 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
             tripId={trip.id}
             currency={trip.currency}
             expenses={expenses}
+          /> : searchParams?.screen === "add-expense" ? <AddExpenseForm
+            tripId={trip.id}
+            currency={trip.currency}
+            members={budgetMembers}
           /> : <BudgetBoard
             tripId={trip.id}
             tripName={trip.name}

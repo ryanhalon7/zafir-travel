@@ -958,7 +958,7 @@ export async function createExpenseAction(formData: FormData) {
   });
 
   revalidatePath(`/trips/${parsed.data.tripId}`);
-  redirect(withMessage(`/trips/${parsed.data.tripId}`, "Expense added."));
+  redirect(withMessage(`/trips/${parsed.data.tripId}?tab=budget&screen=expenses`, "Expense added."));
 }
 
 export async function updateExpenseAction(formData: FormData) {
