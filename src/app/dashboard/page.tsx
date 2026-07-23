@@ -40,7 +40,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     },
   });
 
-  const dashboardTrips: DashboardTrip[] = trips.map((trip) => ({
+  const now = Date.now();
+  const sortedTrips = [...trips].sort((a, b) => {
+    const dateDifference = distanceFromNow(a.startDate, now) - distanceFromNow(b.startDate, now);
+    return dateDifference || b.updatedAt.getTime() - a.updatedAt.getTime();
+  });
+
+  const dashboardTrips: DashboardTrip[] = sortedTrips.map((trip) => ({
     id: trip.id,
     inviteCode: trip.inviteCode,
     name: trip.name,
@@ -60,7 +66,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const travelerNames = Array.from(
     new Map(
-      trips
+      sortedTrips
         .flatMap((trip) => trip.members)
         .map((member) => [
           member.user.id,
