@@ -52,7 +52,7 @@ export function TripSectionTabs({ children, compact = false }: { children: React
   }
 
   return (
-    <Tabs value={section} onValueChange={selectSection} className={compact ? "mt-0" : "mt-8"}>
+    <Tabs value={section} onValueChange={selectSection} className={compact ? "mt-0 min-w-0 max-w-full" : "mt-8 min-w-0 max-w-full"}>
       {children}
     </Tabs>
   );

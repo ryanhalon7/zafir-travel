@@ -8,6 +8,7 @@ import { TripPlanner } from "@/components/trips/trip-planner";
 import { PhotoGallery } from "@/components/trips/photo-gallery";
 import { BudgetBoard } from "@/components/trips/budget-board";
 import { BudgetSettings } from "@/components/trips/budget-settings";
+import { BudgetExpenses } from "@/components/trips/budget-expenses";
 import { PackingList } from "@/components/trips/packing-list";
 import { DocumentVault } from "@/components/trips/document-vault";
 import { TripSectionTabs } from "@/components/trips/trip-section-tabs";
@@ -422,7 +423,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
             photos={photos.filter((photo) => photo.url)}
           />
         </TabsContent>
-        <TabsContent value="budget">
+        <TabsContent value="budget" className="mt-0 min-w-0 max-w-full overflow-x-clip">
           {searchParams?.screen === "settings" ? <BudgetSettings
             tripId={trip.id}
             budgetAmount={totalBudget}
@@ -435,6 +436,10 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
               other: trip.otherBudget?.toNumber() ?? defaultCategoryBudget(0.07),
             }}
             currency={trip.currency}
+          /> : searchParams?.screen === "expenses" ? <BudgetExpenses
+            tripId={trip.id}
+            currency={trip.currency}
+            expenses={expenses}
           /> : <BudgetBoard
             tripId={trip.id}
             tripName={trip.name}

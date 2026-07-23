@@ -68,11 +68,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         ]),
     ).values(),
   ).slice(0, 2);
+  const activeTrip = selectDefaultTrip(trips);
 
   return (
     <AppShell
       userEmail={user.email ?? ""}
-      tripId={trips[0]?.id}
+      tripId={activeTrip?.id}
       hideMobileHeader
       travelerNames={travelerNames}
     >
@@ -84,4 +85,29 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       />
     </AppShell>
   );
+}
+
+function selectDefaultTrip<T extends { startDate: Date | null; status: string; updatedAt: Date }>(trips: T[]) {
+  const now = Date.now();
+
+  return [...trips].sort((a, b) => {
+    const statusDifference = statusPriority(a.status) - statusPriority(b.status);
+    if (statusDifference !== 0) return statusDifference;
+
+    const dateDifference = distanceFromNow(a.startDate, now) - distanceFromNow(b.startDate, now);
+    if (dateDifference !== 0) return dateDifference;
+
+    return b.updatedAt.getTime() - a.updatedAt.getTime();
+  })[0];
+}
+
+function statusPriority(status: string) {
+  if (status === "ACTIVE") return 0;
+  if (status === "UPCOMING") return 1;
+  if (status === "PLANNING") return 2;
+  return 3;
+}
+
+function distanceFromNow(startDate: Date | null, now: number) {
+  return startDate ? Math.abs(startDate.getTime() - now) : Number.POSITIVE_INFINITY;
 }

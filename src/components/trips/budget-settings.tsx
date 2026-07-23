@@ -33,15 +33,15 @@ export function BudgetSettings({ tripId, budgetAmount, categoryBudgets, currency
   currency: string;
 }) {
   return (
-    <div className="mx-auto -mt-8 max-w-[760px] pb-4 sm:mt-0">
-      <header className="-mx-4 flex min-h-16 items-center gap-3 border-b border-burgundy/10 bg-ivory/80 px-4 sm:mx-0 sm:rounded-t-xl sm:border sm:px-6">
+    <div className="mx-auto w-full min-w-0 max-w-[760px] pb-4">
+      <header className="flex min-h-16 items-center gap-3 rounded-2xl border border-burgundy/10 bg-ivory/80 px-4 shadow-[0_3px_10px_rgba(62,38,25,0.04)] sm:px-6">
         <Link href={`/trips/${tripId}?tab=budget`} className="inline-flex items-center gap-1 text-xs font-semibold text-espresso/75 transition hover:text-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-muted-gold">
           <ArrowLeft className="h-3.5 w-3.5" /> Back
         </Link>
         <h1 className="font-heading text-[1.25rem] text-espresso">Budget Settings</h1>
       </header>
 
-      <form action={updateBudgetSettingsAction} className="px-0 py-5 sm:rounded-b-xl sm:border-x sm:border-b sm:border-burgundy/10 sm:bg-ivory/45 sm:px-6 sm:py-7">
+      <form action={updateBudgetSettingsAction} className="px-0 py-5 sm:px-6 sm:py-7">
         <input type="hidden" name="tripId" value={tripId} />
         <input type="hidden" name="currency" value={currency} />
 

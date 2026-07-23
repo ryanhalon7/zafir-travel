@@ -74,8 +74,8 @@ export function BudgetBoard({
   const recentExpenses = paidExpenses.slice(0, 4);
 
   return (
-    <div className="mx-auto -mt-8 max-w-[860px] pb-2 sm:mt-0">
-      <header className="-mx-4 flex min-h-20 items-center justify-between border-b border-burgundy/10 bg-ivory/80 px-4 sm:mx-0 sm:rounded-t-xl sm:border sm:px-6">
+    <div className="mx-auto w-full min-w-0 max-w-[860px] pb-2">
+      <header className="flex min-h-20 items-center justify-between rounded-2xl border border-burgundy/10 bg-ivory/80 px-4 shadow-[0_3px_10px_rgba(62,38,25,0.04)] sm:px-6">
         <div>
           <h1 className="font-heading text-[1.4rem] leading-tight text-espresso">Budget</h1>
           <p className="mt-1 text-xs text-burgundy/65">{tripName}</p>

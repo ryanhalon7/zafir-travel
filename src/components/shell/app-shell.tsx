@@ -24,7 +24,7 @@ export function AppShell({
   travelerNames = [],
 }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(199,161,90,0.22),_transparent_34%),linear-gradient(180deg,_#fffaf0_0%,_#f8f0e5_48%,_#ead8bf_100%)]">
+    <div className="min-h-screen overflow-x-clip bg-[radial-gradient(circle_at_top_left,_rgba(199,161,90,0.22),_transparent_34%),linear-gradient(180deg,_#fffaf0_0%,_#f8f0e5_48%,_#ead8bf_100%)]">
       <header
         className={`${hideMobileHeader ? "hidden" : "block"} sticky top-0 z-20 border-b border-burgundy/10 bg-ivory/82 backdrop-blur-xl md:hidden`}
       >
@@ -60,7 +60,7 @@ export function AppShell({
         </div>
       </header>
       <DesktopNavigation tripId={tripId} userEmail={userEmail} travelerNames={travelerNames} />
-      <main className="container pb-28 pt-8 sm:pt-12 md:ml-[216px] md:w-[calc(100%-216px)] md:max-w-none md:px-5 md:pb-12 md:pt-8 lg:px-6">{children}</main>
+      <main className="container min-w-0 overflow-x-clip pb-28 pt-8 sm:pt-12 md:ml-[216px] md:w-[calc(100%-216px)] md:max-w-none md:px-5 md:pb-12 md:pt-8 lg:px-6">{children}</main>
       <MobileNavigation tripId={tripId} />
     </div>
   );
